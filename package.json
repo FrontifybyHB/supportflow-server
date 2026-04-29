@@ -1,0 +1,51 @@
+{
+  "name": "Support-Flow",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Support Flow is a platform for managing support requests and tickets",
+  "main": "server.js",
+  "scripts": {
+    "test": "node --test",
+    "start": "node server.js",
+    "start-watch": "nodemon --legacy-watch --inspect --watch server.js --watch src --ext js,mjs,cjs,json server.js",
+    "dev": "nodemon --legacy-watch --watch server.js --watch src --ext js,mjs,cjs,json server.js",
+    "lint": "eslint ."
+  },
+  "keywords": [
+    "support",
+    "flow",
+    "tickets",
+    "requests",
+    "platform",
+    "management"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "express-validator": "^7.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.0.1",
+    "morgan": "^1.10.1",
+    "nodemailer": "^8.0.7",
+    "socket.io": "^4.8.3",
+    "winston": "^3.19.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-prettier": "^5.5.4",
+    "globals": "^16.5.0",
+    "nodemon": "^3.1.11"
+  }
+}

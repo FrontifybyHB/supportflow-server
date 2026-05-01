@@ -5,6 +5,7 @@ import {hashPassword, comparePassword} from '../utils/password.js'
 import * as CONSTANT from "../constants/constants.js";
 import logger from "../loggers/winston.logger.js";
 import UserRepository from "../repositories/user.repository.js";
+import { cacheKeys, deleteCache, rememberCache } from "../utils/cache.js";
 
 /**
  * User Service
@@ -70,7 +71,13 @@ class UserService {
      * Get logged-in user
      */
     async getMe(userId) {
-        return this.userRepository.findById(userId);
+        return rememberCache(
+            cacheKeys.userById(userId),
+            async () => {
+                const user = await this.userRepository.findById(userId);
+                return user?.toObject ? user.toObject() : user;
+            }
+        );
     }
 
     /**
@@ -119,6 +126,7 @@ class UserService {
 
         user.password = newPassword;
         await user.save(); // triggers hashing
+        await deleteCache(cacheKeys.userById(userId));
         return true;
     }
 
@@ -130,7 +138,10 @@ class UserService {
             throw appError("Password update not allowed here", 400);
         }
 
-        return this.userRepository.updateById(userId, updates);
+        const user = await this.userRepository.updateById(userId, updates);
+        await deleteCache(cacheKeys.userById(userId));
+
+        return user;
     }
 
     /**
@@ -167,6 +178,7 @@ class UserService {
             user.isEmailVerified = true;
             user.emailVerificationToken = undefined;
             await user.save();
+            await deleteCache(cacheKeys.userById(decoded.id));
 
             return user;
         } catch (error) {

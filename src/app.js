@@ -31,9 +31,9 @@ app.use('/api/v1/auth', authRoutes)
 app.get('/', (req, res) => {
     res.status(200).json({
         status: 'success',
-        message: 'Welcome to the Backend Starter',
+        message: 'Welcome to the Support Flow AI',
         environment: config.NODE_ENV,
-        documentation: 'docs.testdog.in',
+        documentation: 'Welcome to the Support Flow AI',
     });
 });
 

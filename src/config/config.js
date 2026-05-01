@@ -6,7 +6,7 @@ const _config = {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: process.env.PORT || 3000,
     WEB_URL: process.env.WEB_URL || 'https://yourdomain.com',
-    FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
+    CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
     DB_URL: process.env.DB_URL || 'mongodb://localhost:27017/mydatabase',
     JWT_SECRET: process.env.JWT_SECRET,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
@@ -18,6 +18,8 @@ const _config = {
     EMAIL_PORT: process.env.EMAIL_PORT,
     EMAIL_USER: process.env.EMAIL_USER,
     EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
 };
 
 

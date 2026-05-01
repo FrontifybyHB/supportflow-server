@@ -4,7 +4,7 @@ import config from "../config/config.js";
 export const createSocketServer = (httpServer) => {
   const io = new Server(httpServer, {
     cors: {
-      origin: config.FRONTEND_URL,
+      origin: config.CLIENT_URL,
       credentials: true,
     },
   });

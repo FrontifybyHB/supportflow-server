@@ -2,19 +2,10 @@ import mongoose from "mongoose";
 
 /**
  * User Schema
- * Handles authentication & authorization
+ * Handles authentication, authorization, and tenant membership.
  */
 const userSchema = new mongoose.Schema(
     {
-        username: {
-            type: String,
-            required: true,
-            unique: true,
-            trim: true,
-            minlength: 3,
-            maxlength: 30,
-        },
-
         email: {
             type: String,
             required: true,
@@ -30,24 +21,62 @@ const userSchema = new mongoose.Schema(
             maxlength: 50,
         },
 
-        password: {
+        passwordHash: {
             type: String,
-            required: true,
             minlength: 8,
-            select: false, // 🚨 very important (won't return by default)
+            select: false,
+        },
+
+        googleId: {
+            type: String,
+            unique: true,
+            sparse: true,
+            index: true,
+        },
+
+        avatarUrl: {
+            type: String,
+            default: "",
+        },
+
+        authProviders: {
+            type: [String],
+            enum: ["password", "google"],
+            default: ["password"],
         },
 
         role: {
             type: String,
-            enum: ["user", "admin"],
-            default: "user",
-            select: false,
+            enum: ["customer", "agent", "admin", "superadmin"],
+            default: "customer",
+            index: true,
+        },
+
+        businessId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Business",
+            default: null,
+            index: true,
+        },
+
+        isActive: {
+            type: Boolean,
+            default: true,
+            index: true,
+        },
+
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
         },
     },
     {
-        timestamps: true, // createdAt & updatedAt
+        timestamps: true,
     }
 );
+
+userSchema.index({ businessId: 1, role: 1 });
+userSchema.index({ businessId: 1, isActive: 1 });
 
 const User = mongoose.model("User", userSchema);
 

@@ -1,17 +1,10 @@
-import { Redis } from '@upstash/redis';
-import config from './config.js';
+import {
+    getUpstashRestClient,
+    isUpstashRestConfigured,
+} from '../utils/redis.js';
 
-const hasRedisCredentials = Boolean(
-    config.UPSTASH_REDIS_REST_URL && config.UPSTASH_REDIS_REST_TOKEN
-);
+const redis = getUpstashRestClient();
 
-const redis = hasRedisCredentials
-    ? new Redis({
-        url: config.UPSTASH_REDIS_REST_URL,
-        token: config.UPSTASH_REDIS_REST_TOKEN,
-    })
-    : null;
-
-export const isRedisConfigured = () => hasRedisCredentials;
+export const isRedisConfigured = isUpstashRestConfigured;
 
 export default redis;

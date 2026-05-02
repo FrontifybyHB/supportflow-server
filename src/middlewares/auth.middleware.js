@@ -1,41 +1,25 @@
-import jwt from "jsonwebtoken";
 import appError from '../utils/appError.js';
-import config from "../config/config.js";
-import User from "../models/user.model.js";
+import { verifyAccessToken } from "../utils/tokens.js";
+import userRepository from "../repositories/user.repository.js";
+import businessRepository from "../repositories/business.repository.js";
 
 /**
  * Protect middleware
- * Checks if user is authenticated using JWT
+ * Checks if user is authenticated using an access token.
  */
 export const protect = async (req, res, next) => {
     try {
-        let token;
-
-        // 1️⃣ Get token from Authorization header
-        if (
-            req.headers.authorization &&
-            req.headers.authorization.startsWith("Bearer") ||
-            req.cookies.accessToken
-        ) {
-            token = req.cookies.accessToken || req.headers.authorization.split(" ")[1];
-        }
-
-
-
-        // 2️⃣ If token not found
-        if (!token) {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
             return next(
                 appError("You are not logged in. Please log in to continue.", 401)
             );
         }
 
-        // 3️⃣ Verify token
-        const decoded = jwt.verify(token, config.JWT_SECRET);
+        const token = authHeader.split(" ")[1];
+        const decoded = verifyAccessToken(token);
 
-        // decoded = { id, iat, exp }
-
-        // 4️⃣ Check if user still exists
-        const user = await User.findById(decoded.id).select("role");
+        const user = await userRepository.findById(decoded.userId);
 
         if (!user) {
             return next(
@@ -43,22 +27,78 @@ export const protect = async (req, res, next) => {
             );
         }
 
-        // 5️⃣ Attach user to request
+        if (!user.isActive) {
+            return next(appError("Account is deactivated", 401));
+        }
+
         req.user = user;
 
         next();
     } catch (error) {
-        // 6️⃣ Token errors handling
         if (error.name === "JsonWebTokenError") {
             return next(appError("Invalid token. Please log in again.", 401));
         }
 
         if (error.name === "TokenExpiredError") {
-            return next(
-                appError("Your session has expired. Please log in again.", 401)
-            );
+            const err = appError("Access token expired", 401);
+            err.code = "AT_EXPIRED";
+            return next(err);
         }
 
+        next(error);
+    }
+};
+
+export const requireVerified = (req, res, next) => {
+    if (!req.user?.isEmailVerified) {
+        return next(appError("Please verify your email before continuing", 403));
+    }
+    next();
+};
+
+export const requireTenant = (req, res, next) => {
+    if (!req.user?.businessId) {
+        return next(appError("This endpoint requires a business-scoped account", 403));
+    }
+
+    req.businessId = req.user.businessId;
+    next();
+};
+
+export const requireRole = (minRole) => {
+    const roleHierarchy = {
+        customer: 0,
+        agent: 1,
+        admin: 2,
+        superadmin: 3,
+    };
+
+    return (req, res, next) => {
+        const userLevel = roleHierarchy[req.user?.role] ?? -1;
+        const requiredLevel = roleHierarchy[minRole] ?? 99;
+
+        if (userLevel < requiredLevel) {
+            return next(appError(`This action requires ${minRole} role or higher`, 403));
+        }
+
+        next();
+    };
+};
+
+export const requireActiveBusiness = async (req, res, next) => {
+    try {
+        if (!req.businessId) {
+            return next(appError("Business scope is required", 403));
+        }
+
+        const business = await businessRepository.findActiveStatusById(req.businessId);
+
+        if (!business || !business.isActive) {
+            return next(appError("Business is inactive", 403));
+        }
+
+        next();
+    } catch (error) {
         next(error);
     }
 };

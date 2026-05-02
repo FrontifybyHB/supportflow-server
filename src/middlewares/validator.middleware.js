@@ -1,4 +1,5 @@
-import { validationResult } from "express-validator";
+import mongoose from "mongoose";
+import { param, validationResult } from "express-validator";
 
 /**
  * Validate request using express-validator rules
@@ -47,6 +48,7 @@ export const customValidators = {
      * - At least 1 uppercase
      * - At least 1 lowercase
      * - At least 1 number
+     * - At least 1 special character
      */
     strongPassword(value) {
         if (!value) return false;
@@ -54,13 +56,25 @@ export const customValidators = {
         const hasUppercase = /[A-Z]/.test(value);
         const hasLowercase = /[a-z]/.test(value);
         const hasNumber = /\d/.test(value);
+        const hasSpecial = /[^A-Za-z0-9]/.test(value);
         const hasMinLength = value.length >= 8;
 
         return (
             hasUppercase &&
             hasLowercase &&
             hasNumber &&
+            hasSpecial &&
             hasMinLength
         );
     },
+
+    isMongoId(value) {
+        return mongoose.Types.ObjectId.isValid(value);
+    },
 };
+
+export const objectIdParam = (field = "id") => [
+    param(field)
+        .custom((value) => customValidators.isMongoId(value))
+        .withMessage(`${field} must be a valid MongoDB ObjectId`),
+];

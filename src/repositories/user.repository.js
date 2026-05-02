@@ -18,6 +18,10 @@ class UserRepository extends UserRepositoryContract {
     return User.findById(userId).select("-password -__v");
   }
 
+  async findByIdWithEmailVerificationToken(userId) {
+    return User.findById(userId).select("+emailVerificationToken");
+  }
+
   async updateById(userId, updates) {
     return User.findByIdAndUpdate(userId, updates, {
       new: true,

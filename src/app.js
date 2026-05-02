@@ -5,6 +5,7 @@ import { generalRateLimiter } from './middlewares/rateLimiter.middleware.js'
 import morganLogger from './loggers/morgan.logger.js'
 import config from './config/config.js'
 import { buildCorsMiddleware } from './config/cors.config.js';
+import tenantMiddleware from './middlewares/tenant.middleware.js';
 
 const app = express();
 
@@ -20,10 +21,17 @@ app.use(generalRateLimiter)
 
 // import routes
 import authRoutes from "./routes/auth.routes.js";
+import superadminRoutes from "./routes/superadmin.routes.js";
+import agentRoutes from "./routes/agent.routes.js";
+import chatRoutes from "./routes/chat.routes.js";
 import errorHandler from './middlewares/error.handler.js'
 
 // Auth Routes
 app.use('/api/v1/auth', authRoutes)
+app.use(tenantMiddleware);
+app.use('/api/superadmin', superadminRoutes);
+app.use('/api/agent', agentRoutes);
+app.use('/api/chat', chatRoutes);
 
 
 

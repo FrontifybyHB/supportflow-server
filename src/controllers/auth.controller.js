@@ -4,6 +4,12 @@ import userService from "../services/user.service.js";
 import { sendVerificationEmail } from "../utils/sendEmail.js";
 import appError from '../utils/appError.js';
 
+const authCookieOptions = {
+    httpOnly: true,
+    secure: config.NODE_ENV === "production",
+    sameSite: config.NODE_ENV === "production" ? "none" : "lax",
+};
+
 
 
 
@@ -29,15 +35,11 @@ class AuthController {
         });
 
         res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: true, // Use secure cookies in production
-            sameSite: 'none',
+            ...authCookieOptions,
         });
 
         res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: true, // Use secure cookies in production
-            sameSite: 'none',
+            ...authCookieOptions,
         });
 
         res.status(201).json({
@@ -71,14 +73,10 @@ class AuthController {
         });
 
         res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: true, // Use secure cookies in production
-            sameSite: 'none',
+            ...authCookieOptions,
         });
         res.cookie("accessToken", accessToken, {
-            httpOnly: true,
-            secure: true, // Use secure cookies in production
-            sameSite: 'none',
+            ...authCookieOptions,
         });
 
         res.status(200).json({
@@ -131,7 +129,7 @@ class AuthController {
         const decoded = this.userService.verifyRefreshToken(refreshToken);
 
         const accessToken = this.userService.generateAccessToken({
-            userId: decoded.id,
+            userId: decoded.userId,
         });
 
         res.status(200).json({
@@ -144,8 +142,8 @@ class AuthController {
      * Logout (stateless)
      */
     logout = asyncHandler(async (req, res) => {
-        res.clearCookie("refreshToken");
-        res.clearCookie("accessToken");
+        res.clearCookie("refreshToken", authCookieOptions);
+        res.clearCookie("accessToken", authCookieOptions);
         res.status(200).json({
             success: true,
             message: "Logged out successfully",

@@ -3,7 +3,8 @@ import { customValidators } from '../middlewares/validator.middleware.js';
 
 export const registerValidator = [
     body('username')
-        .optional({ nullable: true })
+        .notEmpty()
+        .withMessage('Username is required')
         .isLength({ min: 3, max: 30 })
         .withMessage('Username must be between 3 and 30 characters')
         .matches(/^[a-zA-Z0-9_]+$/)
@@ -11,7 +12,8 @@ export const registerValidator = [
         .trim()
         .escape(),
     body('name')
-        .optional()
+        .notEmpty()
+        .withMessage('Name is required')
         .isLength({ min: 2, max: 50 })
         .withMessage('Name must be between 2 and 50 characters')
         .trim(),
@@ -31,6 +33,13 @@ export const registerValidator = [
                 throw new Error(
                     'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
                 );
+            }
+            return true;
+        }),
+    body('role')
+        .custom((value, { req }) => {
+            if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
+                throw new Error('Role cannot be set during registration');
             }
             return true;
         }),

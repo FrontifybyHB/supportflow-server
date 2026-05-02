@@ -31,16 +31,23 @@ export const protect = async (req, res, next) => {
 
         // 3️⃣ Verify token
         const decoded = jwt.verify(token, config.JWT_SECRET);
+        if (decoded.type && decoded.type !== "access") {
+            return next(appError("Invalid access token. Please log in again.", 401));
+        }
 
         // decoded = { id, iat, exp }
 
         // 4️⃣ Check if user still exists
-        const user = await User.findById(decoded.id).select("role");
+        const user = await User.findById(decoded.id).select("+role businessId isActive");
 
         if (!user) {
             return next(
                 appError("The user belonging to this token no longer exists.", 401)
             );
+        }
+
+        if (user.isActive === false) {
+            return next(appError("This user account is inactive.", 401));
         }
 
         // 5️⃣ Attach user to request
@@ -61,4 +68,18 @@ export const protect = async (req, res, next) => {
 
         next(error);
     }
+};
+
+export const restrictTo = (...roles) => {
+    return (req, res, next) => {
+        if (!req.user) {
+            return next(appError("You are not logged in. Please log in to continue.", 401));
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return next(appError("You do not have permission to perform this action.", 403));
+        }
+
+        next();
+    };
 };

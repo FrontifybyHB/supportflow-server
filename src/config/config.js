@@ -20,5 +20,10 @@ const _config = {
     EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
 };
 
+if (!_config.JWT_SECRET) {
+    // eslint-disable-next-line no-console
+    console.error('JWT_SECRET is required. Set it in your environment before starting the server.');
+    process.exit(1);
+}
 
 export default _config;

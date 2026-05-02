@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
 /**
  * User Schema
@@ -39,8 +40,29 @@ const userSchema = new mongoose.Schema(
 
         role: {
             type: String,
-            enum: ["user", "admin"],
+            enum: ["user", "agent", "admin", "superadmin"],
             default: "user",
+            select: false,
+        },
+
+        businessId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Business",
+            default: null,
+        },
+
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
+
+        isEmailVerified: {
+            type: Boolean,
+            default: false,
+        },
+
+        emailVerificationToken: {
+            type: String,
             select: false,
         },
     },
@@ -48,6 +70,13 @@ const userSchema = new mongoose.Schema(
         timestamps: true, // createdAt & updatedAt
     }
 );
+
+userSchema.pre("save", function hashPasswordBeforeSave() {
+    if (!this.isModified("password")) return;
+    if (/^\$2[aby]\$\d{2}\$/.test(this.password)) return;
+
+    this.password = bcrypt.hashSync(this.password, 12);
+});
 
 const User = mongoose.model("User", userSchema);
 

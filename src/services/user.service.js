@@ -23,6 +23,8 @@ class UserService {
      * Register new user
      */
     async register(userData) {
+        delete userData.role;
+
         const emailExists = await this.userRepository.findByEmail(userData.email);
         if (emailExists) {
             throw appError("Email already registered", 400);
@@ -39,8 +41,9 @@ class UserService {
             username: userData.username,
             email: userData.email,
             password: hashedPassword,
-            name: userData.name || "",
-            role: userData.role || "user"
+            name: userData.name,
+            role: "user",
+            isEmailVerified: false
         });
 
         user.password = undefined;
@@ -55,6 +58,10 @@ class UserService {
 
         if (!user) {
             throw appError("Invalid email or password", 401);
+        }
+
+        if (user.isActive === false) {
+            throw appError("Account deactivated", 401);
         }
 
         const isPasswordValid = await comparePassword(password, user.password);
@@ -78,7 +85,7 @@ class UserService {
      */
     generateAccessToken({ userId, username, email }) {
         return jwt.sign(
-            { id: userId, username, email },
+            { type: "access", id: userId, username, email },
             config.JWT_SECRET,
             { expiresIn: CONSTANT.ACCESS_TOKEN_EXPIRATION }
         );
@@ -89,7 +96,7 @@ class UserService {
      */
     generateRefreshToken({ userId }) {
         return jwt.sign(
-            { id: userId },
+            { type: "refresh", userId, id: userId },
             config.JWT_SECRET,
             { expiresIn: CONSTANT.REFRESH_TOKEN_EXPIRATION }
         );
@@ -101,6 +108,9 @@ class UserService {
     verifyRefreshToken(refreshToken) {
         try {
             const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
+            if (decoded.type !== "refresh") {
+                throw appError("Invalid refresh token", 401);
+            }
             return decoded;
         } catch (error) {
             logger.warn("Refresh token verification failed", {
@@ -117,7 +127,7 @@ class UserService {
         const user = await this.userRepository.findById(userId);
         if (!user) throw appError("User not found", 404);
 
-        user.password = newPassword;
+        user.password = await hashPassword(newPassword);
         await user.save(); // triggers hashing
         return true;
     }
@@ -158,7 +168,7 @@ class UserService {
     async verifyEmail(token) {
         try {
             const decoded = jwt.verify(token, config.JWT_SECRET);
-            const user = await this.userRepository.findById(decoded.id);
+            const user = await this.userRepository.findByIdWithEmailVerificationToken(decoded.id);
 
             if (!user || user.emailVerificationToken !== token) {
                 throw appError("Invalid verification token", 401);

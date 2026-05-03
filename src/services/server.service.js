@@ -19,8 +19,8 @@ class ServerService {
       process.exit(1);
     }
 
-    const { hasFailures } = await runStartupHealthChecks();
-    if (hasFailures && config.NODE_ENV === "production") {
+    const { hasCriticalFailures } = await runStartupHealthChecks();
+    if (hasCriticalFailures && config.NODE_ENV === "production") {
       logger.error("One or more critical health checks failed; aborting startup");
       process.exit(1);
     }

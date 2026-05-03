@@ -1,5 +1,10 @@
 import winston from "winston";
+import fs from "fs";
+
 const { createLogger, format, transports } = winston;
+const logDir = "logs";
+
+fs.mkdirSync(logDir, { recursive: true });
 
 /*
 |--------------------------------------------------------------------------
@@ -9,8 +14,12 @@ const { createLogger, format, transports } = winston;
 const logFormat = format.combine(
     format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
     format.colorize(),
-    format.printf(({ timestamp, level, message }) => {
-        return `${timestamp} [${level}]: ${message}`;
+    format.errors({ stack: true }),
+    format.printf((info) => {
+        const { timestamp, level, message, stack, ...metadata } = info;
+        const details = Object.keys(metadata).length > 0 ? ` ${JSON.stringify(metadata)}` : "";
+        const stackTrace = stack ? `\n${stack}` : "";
+        return `${timestamp} [${level}]: ${message}${details}${stackTrace}`;
     })
 );
 
@@ -20,7 +29,7 @@ const logFormat = format.combine(
 |--------------------------------------------------------------------------
 */
 const logger = createLogger({
-    level: process.env.NODE_ENV === "production" ? "error" : "info",
+    level: process.env.LOG_LEVEL || "info",
     format: logFormat,
     transports: [
         // 🔴 Error logs
@@ -33,21 +42,11 @@ const logger = createLogger({
         new transports.File({
             filename: "logs/combined.log",
         }),
-    ],
-});
-
-/*
-|--------------------------------------------------------------------------
-| Console logs only in development
-|--------------------------------------------------------------------------
-*/
-if (process.env.NODE_ENV !== "production") {
-    logger.add(
         new transports.Console({
             format: logFormat,
-        })
-    );
-}
+        }),
+    ],
+});
 
 /*
 |--------------------------------------------------------------------------

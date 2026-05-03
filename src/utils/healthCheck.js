@@ -7,6 +7,7 @@ import cacheService from "../services/cache.service.js";
 import { getQueueConnection, isQueueConfigured } from "../queues/email.queue.js";
 
 const STATUS = Object.freeze({ OK: "OK", WARN: "WARN", FAIL: "FAIL", SKIP: "SKIP" });
+const CRITICAL_CHECKS = new Set(["Env vars", "MongoDB"]);
 const PING_TIMEOUT_MS = 3000;
 
 const withTimeout = (promise, ms, label) => {
@@ -163,7 +164,14 @@ export const runStartupHealthChecks = async () => {
     logger.info("===============================================================");
 
     const failed = results.filter((r) => r.status === STATUS.FAIL);
-    return { results, failed, hasFailures: failed.length > 0 };
+    const criticalFailures = failed.filter((r) => CRITICAL_CHECKS.has(r.name));
+    return {
+        results,
+        failed,
+        criticalFailures,
+        hasFailures: failed.length > 0,
+        hasCriticalFailures: criticalFailures.length > 0,
+    };
 };
 
 export { STATUS };

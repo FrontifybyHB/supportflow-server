@@ -1,5 +1,36 @@
 import mongoose from "mongoose";
 
+const feedbackSchema = new mongoose.Schema(
+  {
+    rating: {
+      type: Number,
+      min: 1,
+      max: 5,
+      required: true,
+    },
+    resolved: {
+      type: Boolean,
+      required: true,
+    },
+    comment: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
+    feedbackType: {
+      type: String,
+      enum: ["ai", "agent"],
+      required: true,
+    },
+    submittedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
+
 const ticketSchema = new mongoose.Schema(
   {
     businessId: {
@@ -34,8 +65,17 @@ const ticketSchema = new mongoose.Schema(
     },
     priority: {
       type: String,
-      enum: ["low", "medium", "high", "urgent"],
-      default: "medium",
+      enum: ["Low", "Medium", "High", "Critical"],
+      default: "Medium",
+    },
+    category: {
+      type: String,
+      enum: ["billing", "account", "technical", "general", "refund", "security", "other"],
+      default: "general",
+    },
+    isHandoff: {
+      type: Boolean,
+      default: false,
     },
     assignedAgent: {
       type: mongoose.Schema.Types.ObjectId,
@@ -47,6 +87,19 @@ const ticketSchema = new mongoose.Schema(
       enum: ["chat", "email", "manual"],
       default: "chat",
     },
+    feedback: {
+      type: feedbackSchema,
+      default: undefined,
+    },
+    feedbackTokenHash: {
+      type: String,
+      select: false,
+      index: true,
+    },
+    feedbackTokenExpiresAt: {
+      type: Date,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -55,7 +108,10 @@ const ticketSchema = new mongoose.Schema(
 
 ticketSchema.index({ businessId: 1, status: 1 });
 ticketSchema.index({ businessId: 1, priority: 1 });
+ticketSchema.index({ businessId: 1, category: 1 });
 ticketSchema.index({ businessId: 1, assignedAgent: 1, status: 1 });
+ticketSchema.index({ businessId: 1, "feedback.feedbackType": 1 });
+ticketSchema.index({ businessId: 1, "feedback.submittedAt": -1 });
 ticketSchema.index({ businessId: 1, createdAt: -1 });
 ticketSchema.index({ businessId: 1, updatedAt: -1 });
 

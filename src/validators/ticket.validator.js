@@ -17,6 +17,10 @@ export const customerTicketValidator = [
     .isLength({ max: 150 })
     .withMessage("Subject cannot exceed 150 characters")
     .trim(),
+  body("conversationId")
+    .optional({ checkFalsy: true })
+    .isMongoId()
+    .withMessage("Conversation ID is invalid"),
   body("customerName").optional().isLength({ max: 100 }).trim(),
   body("customerEmail")
     .optional({ checkFalsy: true })
@@ -28,6 +32,10 @@ export const customerTicketValidator = [
     .isLength({ max: 20 })
     .withMessage("Priority cannot exceed 20 characters")
     .trim(),
+  body("category")
+    .optional()
+    .isIn(["billing", "account", "technical", "general", "refund", "security", "other"])
+    .withMessage("Category is invalid"),
 ];
 
 export const ticketQueryValidator = [
@@ -47,8 +55,12 @@ export const ticketQueryValidator = [
     .withMessage("Status must be open, pending, resolved, or closed"),
   query("priority")
     .optional()
-    .isIn(["low", "medium", "high", "urgent"])
-    .withMessage("Priority must be low, medium, high, or urgent"),
+    .isIn(["Low", "Medium", "High", "Critical", "low", "medium", "high", "urgent"])
+    .withMessage("Priority must be Low, Medium, High, or Critical"),
+  query("category")
+    .optional()
+    .isIn(["billing", "account", "technical", "general", "refund", "security", "other"])
+    .withMessage("Category is invalid"),
 ];
 
 export const statusValidator = [

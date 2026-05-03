@@ -22,6 +22,11 @@ const businessSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    activeAIModel: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "AIModel",
+      default: null,
+    },
     usage: {
       aiCalls: {
         type: Number,
@@ -44,6 +49,7 @@ const businessSchema = new mongoose.Schema(
 
 businessSchema.index({ ownerId: 1 });
 businessSchema.index({ isActive: 1, plan: 1 });
+businessSchema.index({ activeAIModel: 1 });
 businessSchema.index({ createdAt: -1 });
 
 const Business = mongoose.model("Business", businessSchema);

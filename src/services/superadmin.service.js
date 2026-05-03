@@ -118,7 +118,7 @@ class SuperAdminService {
     const user = await User.findByIdAndUpdate(
       id,
       { isActive: false },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     )
       .select("-password -__v")
       .lean();
@@ -132,7 +132,7 @@ class SuperAdminService {
     const user = await User.findByIdAndUpdate(
       id,
       { isActive: true },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     )
       .select("-password -__v")
       .lean();

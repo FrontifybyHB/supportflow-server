@@ -28,6 +28,10 @@ class BusinessRepositoryContract {
   async getUsageByPlan() {
     throw new Error("Method not implemented: getUsageByPlan");
   }
+
+  async getBusinessKnowledge(_businessId, _message, _limit) {
+    throw new Error("Method not implemented: getBusinessKnowledge");
+  }
 }
 
 export default BusinessRepositoryContract;

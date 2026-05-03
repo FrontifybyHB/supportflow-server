@@ -24,6 +24,8 @@ import authRoutes from "./routes/auth.routes.js";
 import superadminRoutes from "./routes/superadmin.routes.js";
 import agentRoutes from "./routes/agent.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
+import businessAIRoutes from "./routes/businessAi.routes.js";
+import feedbackRoutes from "./routes/feedback.routes.js";
 import errorHandler from './middlewares/error.handler.js'
 
 // Auth Routes
@@ -32,6 +34,8 @@ app.use(tenantMiddleware);
 app.use('/api/superadmin', superadminRoutes);
 app.use('/api/agent', agentRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/business-ai', businessAIRoutes);
+app.use('/api/feedback', feedbackRoutes);
 
 
 

@@ -25,6 +25,10 @@ class AIModelRepositoryContract {
     throw new Error("Method not implemented: getActiveDefault");
   }
 
+  async getBusinessActiveModel(_businessId) {
+    throw new Error("Method not implemented: getBusinessActiveModel");
+  }
+
   async setDefault(_id) {
     throw new Error("Method not implemented: setDefault");
   }

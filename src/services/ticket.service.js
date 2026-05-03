@@ -29,7 +29,9 @@ class TicketService {
         email: data.customerEmail || "",
       },
       subject: data.subject || this.buildSubject(data.message),
-      priority: data.priority || "medium",
+      priority: this.normalizePriority(data.priority),
+      category: this.normalizeCategory(data.category),
+      isHandoff: data.isHandoff ?? true,
       source: "chat",
     });
 
@@ -60,7 +62,9 @@ class TicketService {
         email: data.customerEmail || "",
       },
       subject: data.subject || this.buildSubject(data.message),
-      priority: data.priority || "medium",
+      priority: this.normalizePriority(data.priority),
+      category: this.normalizeCategory(data.category),
+      isHandoff: data.isHandoff ?? false,
       status: "resolved",
       source: "chat",
     });
@@ -91,7 +95,8 @@ class TicketService {
     return this.ticketRepository.findAll({
       businessId: user.businessId,
       status: query.status,
-      priority: query.priority,
+      priority: query.priority ? this.normalizePriority(query.priority) : undefined,
+      category: query.category,
       assignedAgent: user.role === "agent" ? user._id : undefined,
       includeUnassigned: user.role === "agent",
       page: query.page,
@@ -199,6 +204,36 @@ class TicketService {
     return message;
   }
 
+  async getConversationHistory(data = {}) {
+    const businessId = data.businessId;
+    if (!businessId) return [];
+
+    if (data.conversationId) {
+      const directMessages = await this.messageRepository.findByTicketId(
+        data.conversationId,
+        businessId
+      );
+
+      if (directMessages.length) {
+        return this.toConversationHistory(directMessages);
+      }
+    }
+
+    const tickets = await this.ticketRepository.findRecentByCustomer(
+      businessId,
+      data.customerEmail,
+      3
+    );
+    const ticketIds = tickets.map((ticket) => ticket._id);
+    const messages = await this.messageRepository.findRecentByTicketIds(
+      ticketIds,
+      businessId,
+      10
+    );
+
+    return this.toConversationHistory(messages.reverse());
+  }
+
   ensureTicketAccess(user, ticket) {
     if (user.role === "superadmin") return;
 
@@ -219,6 +254,49 @@ class TicketService {
     const trimmed = message.trim();
     if (!trimmed) return "New support request";
     return trimmed.length > 80 ? `${trimmed.slice(0, 77)}...` : trimmed;
+  }
+
+  normalizePriority(priority = "Medium") {
+    const priorityMap = {
+      low: "Low",
+      Low: "Low",
+      medium: "Medium",
+      Medium: "Medium",
+      high: "High",
+      High: "High",
+      urgent: "Critical",
+      critical: "Critical",
+      Critical: "Critical",
+    };
+
+    return priorityMap[priority] || "Medium";
+  }
+
+  normalizeCategory(category = "general") {
+    const allowed = new Set([
+      "billing",
+      "account",
+      "technical",
+      "general",
+      "refund",
+      "security",
+      "other",
+    ]);
+    return allowed.has(category) ? category : "other";
+  }
+
+  toConversationHistory(messages = []) {
+    return messages.slice(-10).map((message) => ({
+      role: this.toHistoryRole(message.senderType),
+      content: message.content,
+    }));
+  }
+
+  toHistoryRole(senderType) {
+    if (senderType === "customer") return "customer";
+    if (senderType === "ai") return "assistant";
+    if (senderType === "agent") return "agent";
+    return "system";
   }
 }
 

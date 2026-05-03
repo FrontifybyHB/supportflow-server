@@ -20,6 +20,10 @@ class TicketRepositoryContract {
   async assignAgent(_id, _businessId, _agentId, _options) {
     throw new Error("Method not implemented: assignAgent");
   }
+
+  async findRecentByCustomer(_businessId, _customerEmail, _limit) {
+    throw new Error("Method not implemented: findRecentByCustomer");
+  }
 }
 
 export default TicketRepositoryContract;

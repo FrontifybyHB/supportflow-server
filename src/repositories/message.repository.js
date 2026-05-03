@@ -19,6 +19,17 @@ class MessageRepository extends MessageRepositoryContract {
       .sort({ createdAt: 1 })
       .lean();
   }
+
+  async findRecentByTicketIds(ticketIds, businessId, limit = 10) {
+    if (!ticketIds.length) return [];
+
+    return this.model
+      .find({ ticketId: { $in: ticketIds }, businessId })
+      .select("ticketId businessId senderType content createdAt")
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+  }
 }
 
 export default MessageRepository;

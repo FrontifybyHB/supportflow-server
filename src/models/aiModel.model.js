@@ -13,6 +13,12 @@ const aiModelSchema = new mongoose.Schema(
       enum: ["openai", "gemini", "custom"],
       required: true,
     },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 500,
+      default: "",
+    },
     apiKey: {
       type: String,
       required: true,

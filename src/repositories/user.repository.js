@@ -24,7 +24,7 @@ class UserRepository extends UserRepositoryContract {
 
   async updateById(userId, updates) {
     return User.findByIdAndUpdate(userId, updates, {
-      new: true,
+      returnDocument: "after",
       runValidators: true,
     }).select("-password -__v");
   }

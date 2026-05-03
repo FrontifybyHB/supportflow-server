@@ -17,6 +17,7 @@ class TicketRepository extends TicketRepositoryContract {
     status,
     priority,
     assignedAgent,
+    category,
     includeUnassigned = false,
     page = 1,
     limit = 20,
@@ -29,6 +30,7 @@ class TicketRepository extends TicketRepositoryContract {
     if (!allowCrossTenant) filter.businessId = businessId;
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
+    if (category) filter.category = category;
     if (assignedAgent && includeUnassigned) {
       filter.$or = [{ assignedAgent }, { assignedAgent: null }];
     } else if (assignedAgent) {
@@ -38,7 +40,7 @@ class TicketRepository extends TicketRepositoryContract {
     const [data, total] = await Promise.all([
       this.model
         .find(filter)
-        .select("businessId customer subject status priority assignedAgent source createdAt updatedAt")
+        .select("businessId customer subject status priority category isHandoff assignedAgent source feedback createdAt updatedAt")
         .sort({ updatedAt: -1 })
         .skip((safePage - 1) * safeLimit)
         .limit(safeLimit)
@@ -60,7 +62,7 @@ class TicketRepository extends TicketRepositoryContract {
 
     return this.model
       .findOne(filter)
-      .select("businessId customer subject status priority assignedAgent source createdAt updatedAt")
+      .select("businessId customer subject status priority category isHandoff assignedAgent source feedback createdAt updatedAt")
       .lean();
   }
 
@@ -71,9 +73,9 @@ class TicketRepository extends TicketRepositoryContract {
     return this.model.findOneAndUpdate(
       filter,
       { status },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     )
-      .select("businessId customer subject status priority assignedAgent source createdAt updatedAt")
+      .select("businessId customer subject status priority category isHandoff assignedAgent source feedback createdAt updatedAt")
       .lean();
   }
 
@@ -84,9 +86,24 @@ class TicketRepository extends TicketRepositoryContract {
     return this.model.findOneAndUpdate(
       filter,
       { assignedAgent: agentId },
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     )
-      .select("businessId customer subject status priority assignedAgent source createdAt updatedAt")
+      .select("businessId customer subject status priority category isHandoff assignedAgent source feedback createdAt updatedAt")
+      .lean();
+  }
+
+  async findRecentByCustomer(businessId, customerEmail, limit = 3) {
+    if (!customerEmail) return [];
+
+    return this.model
+      .find({
+        businessId,
+        "customer.email": customerEmail.toLowerCase(),
+        source: "chat",
+      })
+      .select("_id businessId customer createdAt updatedAt")
+      .sort({ updatedAt: -1 })
+      .limit(limit)
       .lean();
   }
 }

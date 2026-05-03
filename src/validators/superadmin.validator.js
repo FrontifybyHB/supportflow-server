@@ -20,6 +20,11 @@ export const modelValidator = [
     .withMessage("Provider is required")
     .isIn(["openai", "gemini", "custom"])
     .withMessage("Provider must be openai, gemini, or custom"),
+  body("description")
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage("Description cannot exceed 500 characters")
+    .trim(),
   body("apiKey").notEmpty().withMessage("API key is required"),
   body("endpoint").optional().isString().trim(),
   body("isActive").optional().isBoolean().withMessage("isActive must be boolean"),
@@ -44,6 +49,11 @@ export const modelUpdateValidator = [
     .optional()
     .isIn(["openai", "gemini", "custom"])
     .withMessage("Provider must be openai, gemini, or custom"),
+  body("description")
+    .optional()
+    .isLength({ max: 500 })
+    .withMessage("Description cannot exceed 500 characters")
+    .trim(),
   body("apiKey").optional().notEmpty().withMessage("API key cannot be empty"),
   body("endpoint").optional().isString().trim(),
   body("isActive").optional().isBoolean().withMessage("isActive must be boolean"),

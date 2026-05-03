@@ -7,6 +7,7 @@ const _config = {
     PORT: process.env.PORT || 3000,
     WEB_URL: process.env.WEB_URL || 'https://yourdomain.com',
     CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+    FRONTEND_URL: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173',
     DB_URL: process.env.DB_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/mydatabase',
     JWT_SECRET: process.env.JWT_SECRET,
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,

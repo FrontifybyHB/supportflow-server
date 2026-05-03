@@ -3,7 +3,7 @@ import appError from "../utils/appError.js";
 import logger from "../loggers/winston.logger.js";
 import TicketRepository from "../repositories/ticket.repository.js";
 import MessageRepository from "../repositories/message.repository.js";
-import BusinessRepository from "../repositories/business.repository.js";
+import { BusinessRepository } from "../repositories/business.repository.js";
 
 class TicketService {
   constructor(

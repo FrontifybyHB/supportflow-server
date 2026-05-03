@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-import bcrypt from "bcrypt";
 
 /**
  * User Schema
@@ -64,22 +63,6 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: true,
             index: true,
-        },
-
-        isEmailVerified: {
-            type: Boolean,
-            default: false,
-        },
-
-        businessId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Business",
-            default: null,
-        },
-
-        isActive: {
-            type: Boolean,
-            default: true,
         },
 
         isEmailVerified: {

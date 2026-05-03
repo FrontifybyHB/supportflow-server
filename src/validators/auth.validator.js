@@ -141,6 +141,33 @@ export const updateBusinessValidator = [
         .optional()
         .isBoolean()
         .withMessage('autoReplyEnabled must be boolean'),
+    body('knowledgeBase')
+        .optional()
+        .isArray({ max: 50 })
+        .withMessage('knowledgeBase must contain at most 50 entries'),
+    body('knowledgeBase.*.title')
+        .optional()
+        .isLength({ min: 1, max: 160 })
+        .withMessage('Knowledge title must be between 1 and 160 characters')
+        .trim(),
+    body('knowledgeBase.*.content')
+        .optional()
+        .isLength({ min: 1, max: 3000 })
+        .withMessage('Knowledge content must be between 1 and 3000 characters')
+        .trim(),
+    body('knowledgeBase.*.tags')
+        .optional()
+        .isArray({ max: 20 })
+        .withMessage('Knowledge tags must contain at most 20 values'),
+    body('knowledgeBase.*.tags.*')
+        .optional()
+        .isLength({ min: 1, max: 50 })
+        .withMessage('Knowledge tags must be between 1 and 50 characters')
+        .trim(),
+    body('knowledgeBase.*.isActive')
+        .optional()
+        .isBoolean()
+        .withMessage('Knowledge isActive must be boolean'),
 ];
 
 export const createAgentValidator = [

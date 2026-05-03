@@ -2,7 +2,7 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import config from '../src/config/config.js';
-import redis from '../src/config/redis.config.js';
+import cacheService from '../src/services/cache.service.js';
 import { isQueueConfigured } from '../src/queues/email.queue.js';
 
 dotenv.config();
@@ -18,25 +18,21 @@ const testSystem = async () => {
         console.log('❌ MongoDB: Connection failed -', error.message);
     }
 
-    // Test Redis Cache (Upstash)
+    // Test cache service (Redis when writable, in-memory fallback otherwise)
     try {
-        if (redis) {
-            const testKey = 'test-key';
-            const testValue = 'test-value';
-            await redis.set(testKey, testValue, { ex: 10 });
-            const retrieved = await redis.get(testKey);
-            await redis.del(testKey);
-            
-            if (retrieved === testValue) {
-                console.log('✅ Upstash Redis Cache: Working correctly');
-            } else {
-                console.log('❌ Upstash Redis Cache: Data mismatch');
-            }
+        const testKey = 'test-key';
+        const testValue = 'test-value';
+        await cacheService.set(testKey, testValue, 10);
+        const retrieved = await cacheService.get(testKey);
+        await cacheService.del(testKey);
+
+        if (retrieved === testValue) {
+            console.log('✅ Cache Service: Working correctly');
         } else {
-            console.log('⚠️  Upstash Redis Cache: Not configured');
+            console.log('❌ Cache Service: Data mismatch');
         }
     } catch (error) {
-        console.log('❌ Upstash Redis Cache: Error -', error.message);
+        console.log('❌ Cache Service: Error -', error.message);
     }
 
     // Test BullMQ Redis
@@ -79,7 +75,7 @@ const testSystem = async () => {
     console.log('- Authentication: Email/Password only');
     console.log('- Email: Nodemailer with SMTP support');
     console.log('- Queue: BullMQ with Redis (fallback available)');
-    console.log('- Cache: Upstash Redis (optional)');
+    console.log('- Cache: Redis with in-memory fallback');
     console.log('- OAuth: Google (optional)');
 
     await mongoose.disconnect();

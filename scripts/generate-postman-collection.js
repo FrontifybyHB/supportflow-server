@@ -403,7 +403,7 @@ pm.test("agent belongs to active business", function () {
 
     folder("02 - Superadmin Platform", [
       folder("Read APIs", [
-        request("Get Platform Stats", "GET", "{{BASE_URL}}/api/superadmin/stats", {
+        request("Get Platform Stats", "GET", "{{BASE_URL}}/api/v1/superadmin/stats", {
           token: "superadminToken",
           tests:
             expectStatus([200]) +
@@ -417,7 +417,7 @@ pm.test("stats contain platform counters", function () {
 });
 `,
         }),
-        request("Get Usage Stats", "GET", "{{BASE_URL}}/api/superadmin/usage", {
+        request("Get Usage Stats", "GET", "{{BASE_URL}}/api/v1/superadmin/usage", {
           token: "superadminToken",
           tests:
             expectStatus([200]) +
@@ -431,7 +431,7 @@ pm.test("usage contains AI counters", function () {
 });
 `,
         }),
-        request("List Businesses", "GET", "{{BASE_URL}}/api/superadmin/businesses", {
+        request("List Businesses", "GET", "{{BASE_URL}}/api/v1/superadmin/businesses", {
           token: "superadminToken",
           tests:
             expectStatus([200]) +
@@ -447,7 +447,7 @@ pm.test("businesses response is an array", function () {
 });
 `,
         }),
-        request("Get Business By ID", "GET", "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}", {
+        request("Get Business By ID", "GET", "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}", {
           token: "superadminToken",
           tests:
             expectStatus([200]) +
@@ -458,7 +458,7 @@ pm.test("business id matches variable", function () {
 });
 `,
         }),
-        request("List Users", "GET", "{{BASE_URL}}/api/superadmin/users", {
+        request("List Users", "GET", "{{BASE_URL}}/api/v1/superadmin/users", {
           token: "superadminToken",
           tests:
             expectStatus([200]) +
@@ -474,13 +474,13 @@ pm.test("users response is an array", function () {
 });
 `,
         }),
-        request("Get Admin User By ID", "GET", "{{BASE_URL}}/api/superadmin/users/{{adminId}}", {
+        request("Get Admin User By ID", "GET", "{{BASE_URL}}/api/v1/superadmin/users/{{adminId}}", {
           token: "superadminToken",
           tests: expectStatus([200]) + expectSuccess(true),
         }),
       ]),
       folder("Business Mutations - Opt In", [
-        request("Suspend Business", "PATCH", "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/suspend", {
+        request("Suspend Business", "PATCH", "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}/suspend", {
           token: "superadminToken",
           preRequest: optionalMutationGuard,
           tests:
@@ -492,7 +492,7 @@ pm.test("business is suspended", function () {
 });
 `,
         }),
-        request("Activate Business", "PATCH", "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/activate", {
+        request("Activate Business", "PATCH", "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}/activate", {
           token: "superadminToken",
           preRequest: optionalMutationGuard,
           tests:
@@ -504,7 +504,7 @@ pm.test("business is active", function () {
 });
 `,
         }),
-        request("Change Business Plan", "PATCH", "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/plan", {
+        request("Change Business Plan", "PATCH", "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}/plan", {
           token: "superadminToken",
           preRequest: optionalMutationGuard,
           body: { plan: "pro" },
@@ -519,7 +519,7 @@ pm.test("plan changed to pro", function () {
         }),
       ]),
       folder("User Mutations - Opt In", [
-        request("Deactivate Agent User", "PATCH", "{{BASE_URL}}/api/superadmin/users/{{agentId}}/deactivate", {
+        request("Deactivate Agent User", "PATCH", "{{BASE_URL}}/api/v1/superadmin/users/{{agentId}}/deactivate", {
           token: "superadminToken",
           preRequest: optionalMutationGuard,
           tests:
@@ -531,7 +531,7 @@ pm.test("agent is inactive", function () {
 });
 `,
         }),
-        request("Reactivate Agent User", "PATCH", "{{BASE_URL}}/api/superadmin/users/{{agentId}}/reactivate", {
+        request("Reactivate Agent User", "PATCH", "{{BASE_URL}}/api/v1/superadmin/users/{{agentId}}/reactivate", {
           token: "superadminToken",
           preRequest: optionalMutationGuard,
           tests:
@@ -545,7 +545,7 @@ pm.test("agent is active", function () {
         }),
       ]),
       folder("AI Model Management", [
-        request("List AI Models", "GET", "{{BASE_URL}}/api/superadmin/models", {
+        request("List AI Models", "GET", "{{BASE_URL}}/api/v1/superadmin/models", {
           token: "superadminToken",
           tests:
             expectStatus([200]) +
@@ -556,7 +556,7 @@ pm.test("models response is an array", function () {
 });
 `,
         }),
-        request("Create AI Model", "POST", "{{BASE_URL}}/api/superadmin/models", {
+        request("Create AI Model", "POST", "{{BASE_URL}}/api/v1/superadmin/models", {
           token: "superadminToken",
           body: {
             name: "Postman Custom Model {{$timestamp}}",
@@ -583,11 +583,11 @@ pm.test("model created without apiKey leak", function () {
 });
 `,
         }),
-        request("Get AI Model", "GET", "{{BASE_URL}}/api/superadmin/models/{{modelId}}", {
+        request("Get AI Model", "GET", "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}", {
           token: "superadminToken",
           tests: expectStatus([200]) + expectSuccess(true),
         }),
-        request("Update AI Model", "PATCH", "{{BASE_URL}}/api/superadmin/models/{{modelId}}", {
+        request("Update AI Model", "PATCH", "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}", {
           token: "superadminToken",
           body: {
             description: "Updated by Postman collection",
@@ -605,7 +605,7 @@ pm.test("model updated", function () {
 });
 `,
         }),
-        request("Set Default AI Model - Opt In", "PATCH", "{{BASE_URL}}/api/superadmin/models/{{modelId}}/default", {
+        request("Set Default AI Model - Opt In", "PATCH", "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}/default", {
           token: "superadminToken",
           preRequest: optionalMutationGuard,
           tests:
@@ -729,7 +729,7 @@ pm.test("conversation continuation returns a ticket", function () {
 
     folder("05 - Agent Tickets", [
       folder("Read APIs", [
-        request("Get Agent Me", "GET", "{{BASE_URL}}/api/agent/me", {
+        request("Get Agent Me", "GET", "{{BASE_URL}}/api/v1/agents/me", {
           token: "agentToken",
           tests:
             expectStatus([200]) +
@@ -740,7 +740,7 @@ pm.test("agent me has business context", function () {
 });
 `,
         }),
-        request("List Agent Tickets", "GET", "{{BASE_URL}}/api/agent/tickets", {
+        request("List Agent Tickets", "GET", "{{BASE_URL}}/api/v1/agents/tickets", {
           token: "agentToken",
           tests:
             expectStatus([200]) +
@@ -758,7 +758,7 @@ pm.test("paginated ticket shape returned", function () {
 });
 `,
         }),
-        request("List Tickets Filtered By Status", "GET", "{{BASE_URL}}/api/agent/tickets?status=open", {
+        request("List Tickets Filtered By Status", "GET", "{{BASE_URL}}/api/v1/agents/tickets?status=open", {
           token: "agentToken",
           tests:
             expectStatus([200]) +
@@ -769,7 +769,7 @@ pm.test("all returned tickets are open", function () {
 });
 `,
         }),
-        request("List Tickets Filtered By Priority", "GET", "{{BASE_URL}}/api/agent/tickets?priority=High", {
+        request("List Tickets Filtered By Priority", "GET", "{{BASE_URL}}/api/v1/agents/tickets?priority=High", {
           token: "agentToken",
           tests:
             expectStatus([200]) +
@@ -780,7 +780,7 @@ pm.test("all returned tickets are high priority", function () {
 });
 `,
         }),
-        request("List Tickets With Pagination", "GET", "{{BASE_URL}}/api/agent/tickets?page=1&limit=5", {
+        request("List Tickets With Pagination", "GET", "{{BASE_URL}}/api/v1/agents/tickets?page=1&limit=5", {
           token: "agentToken",
           tests:
             expectStatus([200]) +
@@ -793,7 +793,7 @@ pm.test("pagination metadata is correct", function () {
 });
 `,
         }),
-        request("Get Ticket Detail", "GET", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}", {
+        request("Get Ticket Detail", "GET", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}", {
           token: "agentToken",
           tests:
             expectStatus([200]) +
@@ -808,7 +808,7 @@ pm.test("ticket detail contains messages", function () {
         }),
       ]),
       folder("Mutations", [
-        request("Assign Ticket To Agent", "PATCH", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/assign", {
+        request("Assign Ticket To Agent", "PATCH", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/assign", {
           token: "adminToken",
           body: {
             agentId: "{{agentId}}",
@@ -822,7 +822,7 @@ pm.test("ticket assigned to agent", function () {
 });
 `,
         }),
-        request("Agent Add Message", "POST", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/messages", {
+        request("Agent Add Message", "POST", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/messages", {
           token: "agentToken",
           body: {
             content: "Thanks for the details. I am checking this for you.",
@@ -836,7 +836,7 @@ pm.test("agent message created", function () {
 });
 `,
         }),
-        request("Update Ticket Status To Pending", "PATCH", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status", {
+        request("Update Ticket Status To Pending", "PATCH", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/status", {
           token: "agentToken",
           body: {
             status: "pending",
@@ -850,7 +850,7 @@ pm.test("ticket is pending", function () {
 });
 `,
         }),
-        request("Update Ticket Status To Resolved", "PATCH", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status", {
+        request("Update Ticket Status To Resolved", "PATCH", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/status", {
           token: "agentToken",
           body: {
             status: "resolved",
@@ -866,21 +866,21 @@ pm.test("ticket is resolved", function () {
         }),
       ]),
       folder("Negative And Isolation Tests", [
-        request("Invalid Ticket Status", "PATCH", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status", {
+        request("Invalid Ticket Status", "PATCH", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/status", {
           token: "agentToken",
           body: {
             status: "done",
           },
           tests: expectStatus([400]) + expectSuccess(false),
         }),
-        request("Assign Ticket Requires Admin", "PATCH", "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/assign", {
+        request("Assign Ticket Requires Admin", "PATCH", "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/assign", {
           token: "agentToken",
           body: {
             agentId: "{{agentId}}",
           },
           tests: expectStatus([403]) + expectSuccess(false),
         }),
-        request("Agent Tickets Missing Token", "GET", "{{BASE_URL}}/api/agent/tickets", {
+        request("Agent Tickets Missing Token", "GET", "{{BASE_URL}}/api/v1/agents/tickets", {
           tests: expectStatus([401]) + expectSuccess(false),
         }),
       ]),
@@ -957,7 +957,7 @@ pm.test("analytics overview returned", function () {
     ]),
 
     folder("07 - Cleanup", [
-      request("Delete Created AI Model", "DELETE", "{{BASE_URL}}/api/superadmin/models/{{modelId}}", {
+      request("Delete Created AI Model", "DELETE", "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}", {
         token: "superadminToken",
         tests: expectStatus([200]) + expectSuccess(true),
       }),

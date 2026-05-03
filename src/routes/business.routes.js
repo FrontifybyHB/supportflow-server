@@ -16,6 +16,8 @@ import {
 
 const router = express.Router();
 
+router.get("/public", businessController.listPublicBusinesses);
+
 router.post(
     "/",
     protect,

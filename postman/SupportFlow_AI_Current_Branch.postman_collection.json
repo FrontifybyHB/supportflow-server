@@ -1224,7 +1224,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/stats"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/stats"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1287,7 +1287,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/usage"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/usage"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1350,7 +1350,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/businesses"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/businesses"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1415,7 +1415,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1475,7 +1475,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/users"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/users"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1540,7 +1540,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/users/{{adminId}}"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/users/{{adminId}}"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1601,7 +1601,7 @@
                 "method": "PATCH",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/suspend"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}/suspend"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1673,7 +1673,7 @@
                 "method": "PATCH",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/activate"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}/activate"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1751,7 +1751,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/plan"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/businesses/{{businessId}}/plan"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1837,7 +1837,7 @@
                 "method": "PATCH",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/users/{{agentId}}/deactivate"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/users/{{agentId}}/deactivate"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1909,7 +1909,7 @@
                 "method": "PATCH",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/users/{{agentId}}/reactivate"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/users/{{agentId}}/reactivate"
                 },
                 "auth": {
                   "type": "bearer",
@@ -1986,7 +1986,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/models"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/models"
                 },
                 "auth": {
                   "type": "bearer",
@@ -2052,7 +2052,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/models"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/models"
                 },
                 "auth": {
                   "type": "bearer",
@@ -2124,7 +2124,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}"
                 },
                 "auth": {
                   "type": "bearer",
@@ -2186,7 +2186,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}"
                 },
                 "auth": {
                   "type": "bearer",
@@ -2255,7 +2255,7 @@
                 "method": "PATCH",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}/default"
+                  "raw": "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}/default"
                 },
                 "auth": {
                   "type": "bearer",
@@ -2936,7 +2936,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/me"
+                  "raw": "{{BASE_URL}}/api/v1/agents/me"
                 },
                 "auth": {
                   "type": "bearer",
@@ -2996,7 +2996,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3063,7 +3063,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets?status=open"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets?status=open"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3123,7 +3123,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets?priority=High"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets?priority=High"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3183,7 +3183,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets?page=1&limit=5"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets?page=1&limit=5"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3245,7 +3245,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3318,7 +3318,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/assign"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/assign"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3393,7 +3393,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/messages"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/messages"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3468,7 +3468,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/status"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3543,7 +3543,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/status"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3623,7 +3623,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/status"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3694,7 +3694,7 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/assign"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets/{{ticketId}}/assign"
                 },
                 "auth": {
                   "type": "bearer",
@@ -3759,7 +3759,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{BASE_URL}}/api/agent/tickets"
+                  "raw": "{{BASE_URL}}/api/v1/agents/tickets"
                 }
               },
               "event": [
@@ -4207,7 +4207,7 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}"
+              "raw": "{{BASE_URL}}/api/v1/superadmin/models/{{modelId}}"
             },
             "auth": {
               "type": "bearer",

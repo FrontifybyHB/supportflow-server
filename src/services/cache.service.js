@@ -16,6 +16,7 @@ const warnOnce = () => {
 class CacheService {
     constructor(client = redis) {
         this.client = client;
+        this.memory = new Map();
     }
 
     isAvailable() {
@@ -29,6 +30,9 @@ class CacheService {
     }
 
     async get(key) {
+        const memoryValue = this.getMemory(key);
+        if (memoryValue !== null) return memoryValue;
+
         if (!this.isAvailable()) return null;
 
         try {
@@ -43,6 +47,7 @@ class CacheService {
     async set(key, value, ttlSeconds = DEFAULT_TTL_SECONDS) {
         if (!this.isAvailable()) {
             warnOnce();
+            this.setMemory(key, value, ttlSeconds);
             return false;
         }
 
@@ -51,11 +56,13 @@ class CacheService {
             return true;
         } catch (error) {
             logger.warn("Cache set failed", { key, error: error.message });
+            this.setMemory(key, value, ttlSeconds);
             return false;
         }
     }
 
     async del(key) {
+        this.memory.delete(key);
         if (!this.isAvailable()) return false;
 
         try {
@@ -68,6 +75,10 @@ class CacheService {
     }
 
     async delMany(keys = []) {
+        for (const key of keys) {
+            this.memory.delete(key);
+        }
+
         if (!this.isAvailable() || keys.length === 0) return false;
 
         try {
@@ -80,7 +91,15 @@ class CacheService {
     }
 
     async delByPrefix(prefix) {
-        if (!this.isAvailable() || !prefix) return false;
+        if (!prefix) return false;
+
+        for (const key of this.memory.keys()) {
+            if (key.startsWith(prefix)) {
+                this.memory.delete(key);
+            }
+        }
+
+        if (!this.isAvailable()) return false;
 
         try {
             const keys = await this.client.keys(`${prefix}*`);
@@ -92,6 +111,25 @@ class CacheService {
             logger.warn("Cache delByPrefix failed", { prefix, error: error.message });
             return false;
         }
+    }
+
+    getMemory(key) {
+        const cached = this.memory.get(key);
+        if (!cached) return null;
+
+        if (cached.expiresAt <= Date.now()) {
+            this.memory.delete(key);
+            return null;
+        }
+
+        return cached.value;
+    }
+
+    setMemory(key, value, ttlSeconds = DEFAULT_TTL_SECONDS) {
+        this.memory.set(key, {
+            value,
+            expiresAt: Date.now() + (Math.max(Number(ttlSeconds) || DEFAULT_TTL_SECONDS, 1) * 1000),
+        });
     }
 
     /**

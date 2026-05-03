@@ -3,10 +3,12 @@ import BusinessRepositoryContract from "../contracts/business.repository.contrac
 import cacheService from "../services/cache.service.js";
 
 const BUSINESS_CACHE_TTL = 60;
+const PUBLIC_BUSINESSES_CACHE_KEY = "business:public:active";
 const businessCacheKeys = (id) => ({
     full: `business:byId:${id}`,
     status: `business:status:${id}`,
     active: `business:active:${id}`,
+    knowledge: `business:knowledge:${id}`,
 });
 
 class BusinessRepository extends BusinessRepositoryContract {
@@ -17,7 +19,9 @@ class BusinessRepository extends BusinessRepositoryContract {
     }
 
     async create(data) {
-        return this.model.create(data);
+        const business = await this.model.create(data);
+        await this.cache.del(PUBLIC_BUSINESSES_CACHE_KEY);
+        return business;
     }
 
     async findById(id) {
@@ -58,7 +62,13 @@ class BusinessRepository extends BusinessRepositoryContract {
     async invalidateById(id) {
         if (!id) return;
         const keys = businessCacheKeys(id);
-        await this.cache.delMany([keys.full, keys.status, keys.active]);
+        await this.cache.delMany([
+            keys.full,
+            keys.status,
+            keys.active,
+            keys.knowledge,
+            PUBLIC_BUSINESSES_CACHE_KEY,
+        ]);
     }
 
     async listAllWithOwner() {
@@ -133,6 +143,18 @@ class BusinessRepository extends BusinessRepositoryContract {
         ]);
     }
 
+    async listPublicActive() {
+        return this.cache.wrap(
+            PUBLIC_BUSINESSES_CACHE_KEY,
+            BUSINESS_CACHE_TTL,
+            () => this.model
+                .find({ isActive: true })
+                .select("_id name industry description settings.chatWidgetEnabled isActive createdAt")
+                .sort({ name: 1, createdAt: -1 })
+                .lean()
+        );
+    }
+
     async setActive(id, isActive) {
         const updated = await this.model
             .findByIdAndUpdate(
@@ -184,6 +206,67 @@ class BusinessRepository extends BusinessRepositoryContract {
             .lean();
         if (updated) await this.invalidateById(id);
         return updated;
+    }
+
+    async getBusinessKnowledge(id, query = "", limit = 3) {
+        if (!id) return [];
+
+        const business = await this.cache.wrap(
+            `business:knowledge:${id}`,
+            300,
+            () => this.model
+                .findById(id)
+                .select("knowledgeBase")
+                .lean()
+        );
+
+        const entries = business?.knowledgeBase?.filter((entry) => entry.isActive) || [];
+        const tokens = String(query)
+            .toLowerCase()
+            .split(/\W+/)
+            .filter((token) => token.length >= 3);
+
+        const scoreEntry = (entry) => {
+            const haystack = [
+                entry.title,
+                entry.content,
+                ...(entry.tags || []),
+            ].join(" ").toLowerCase();
+
+            return tokens.reduce((score, token) => (
+                haystack.includes(token) ? score + 1 : score
+            ), 0);
+        };
+
+        return entries
+            .map((entry) => ({ entry, score: scoreEntry(entry) }))
+            .filter(({ score }) => score > 0 || tokens.length === 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, Math.max(Number(limit) || 3, 1))
+            .map(({ entry }) => ({
+                title: entry.title,
+                content: entry.content,
+                tags: entry.tags || [],
+            }));
+    }
+
+    async incrementUsage(id, usage = {}) {
+        if (!id) return null;
+
+        return this.model
+            .findByIdAndUpdate(
+                id,
+                {
+                    $inc: {
+                        "aiUsage.aiCalls": Math.max(Number(usage.aiCalls) || 0, 0),
+                        "aiUsage.tokensConsumed": Math.max(Number(usage.tokensConsumed) || 0, 0),
+                        "aiUsage.costEstimate": Math.max(Number(usage.costEstimate) || 0, 0),
+                    },
+                },
+                { returnDocument: "after", runValidators: true }
+            )
+            .select("_id aiUsage")
+            .lean();
     }
 
     /**

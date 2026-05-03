@@ -25,11 +25,12 @@ export const createSocketServer = (httpServer) => {
       if (decoded.type && decoded.type !== "access") {
         return next(new Error("Invalid socket access token"));
       }
-      if (!decoded.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
+      const userId = decoded.userId || decoded.id;
+      if (!userId || !mongoose.Types.ObjectId.isValid(userId)) {
         return next(new Error("Invalid socket access token"));
       }
 
-      const user = await User.findById(decoded.id)
+      const user = await User.findById(userId)
         .select("+role businessId isActive")
         .lean();
 

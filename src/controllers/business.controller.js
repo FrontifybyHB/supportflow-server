@@ -20,6 +20,11 @@ class BusinessController {
         return success(res, { business });
     });
 
+    listPublicBusinesses = asyncHandler(async (_req, res) => {
+        const result = await this.businessService.listPublicBusinesses();
+        return success(res, result);
+    });
+
     updateMyBusiness = asyncHandler(async (req, res) => {
         const business = await this.businessService.updateBusiness(req.businessId, req.body);
         return success(res, { business });

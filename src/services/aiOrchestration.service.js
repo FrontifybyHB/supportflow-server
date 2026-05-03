@@ -1,6 +1,6 @@
 import logger from "../loggers/winston.logger.js";
 import appError from "../utils/appError.js";
-import BusinessRepository from "../repositories/business.repository.js";
+import { BusinessRepository } from "../repositories/business.repository.js";
 import aiClassificationService from "./aiClassification.service.js";
 import aiSafetyService from "./aiSafety.service.js";
 

@@ -46,9 +46,28 @@ class BusinessService {
         return business;
     }
 
+    async listPublicBusinesses() {
+        const businesses = await this.businessRepo.listPublicActive();
+
+        return {
+            businesses: businesses.map((business) => ({
+                _id: business._id,
+                businessId: business._id,
+                name: business.name,
+                industry: business.industry || "",
+                category: business.industry || "",
+                description: business.description || "",
+                chatWidgetEnabled: business.settings?.chatWidgetEnabled !== false,
+                isActive: true,
+                createdAt: business.createdAt,
+            })),
+            total: businesses.length,
+        };
+    }
+
     async updateBusiness(businessId, updates) {
         const allowed = {};
-        for (const field of ["name", "industry", "description", "settings"]) {
+        for (const field of ["name", "industry", "description", "settings", "knowledgeBase"]) {
             if (updates[field] !== undefined) allowed[field] = updates[field];
         }
 

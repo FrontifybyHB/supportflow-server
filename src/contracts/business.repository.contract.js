@@ -69,6 +69,14 @@ class BusinessRepositoryContract {
     }
 
     /**
+     * Public active-business directory for customer-side business selection.
+     * @returns {Promise<Array<Object>>}
+     */
+    async listPublicActive() {
+        throw new Error("Method not implemented: listPublicActive");
+    }
+
+    /**
      * Atomic set of the isActive flag.
      * @param {string} id
      * @param {boolean} isActive
@@ -107,6 +115,27 @@ class BusinessRepositoryContract {
     async updatePlan(_id, _plan) {
         void _id; void _plan;
         throw new Error("Method not implemented: updatePlan");
+    }
+
+    /**
+     * @param {string} id
+     * @param {string} query
+     * @param {number} limit
+     * @returns {Promise<Array<{title:string,content:string,tags:Array<string>}>>}
+     */
+    async getBusinessKnowledge(_id, _query, _limit) {
+        void _id; void _query; void _limit;
+        throw new Error("Method not implemented: getBusinessKnowledge");
+    }
+
+    /**
+     * @param {string} id
+     * @param {{aiCalls?:number,tokensConsumed?:number,costEstimate?:number}} usage
+     * @returns {Promise<Object|null>}
+     */
+    async incrementUsage(_id, _usage) {
+        void _id; void _usage;
+        throw new Error("Method not implemented: incrementUsage");
     }
 
     /**

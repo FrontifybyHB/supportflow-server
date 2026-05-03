@@ -29,6 +29,7 @@ export const validate = (rules = []) => {
 
         return res.status(422).json({
             success: false,
+            statusCode: 422,
             message: "Validation failed",
             errors: formattedErrors,
         });

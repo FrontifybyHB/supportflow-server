@@ -1,10 +1,5 @@
 import logger from "../loggers/winston.logger.js";
 import config from "../config/config.js";
-import ApiResponse from "../utils/apiResponse.js";
-
-const errorHandler = (err, req, res, next) => {
-    void next;
-
 const errorHandler = (err, req, res, _next) => {
     void _next;
 
@@ -23,15 +18,20 @@ const errorHandler = (err, req, res, _next) => {
     // Frontend-safe response
     const isServerError = statusCode >= 500;
 
-    res.status(statusCode).json({
+    const response = {
         success: false,
+        statusCode,
         message:
             nodeEnv === "production" && isServerError
                 ? "Internal Server Error"
                 : err.message,
-        code: err.code,
-        stack: nodeEnv === "development" ? err.stack : undefined,
-    });
+    };
+
+    if (err.code) {
+        response.code = err.code;
+    }
+
+    res.status(statusCode).json(response);
 };
 
 export default errorHandler;

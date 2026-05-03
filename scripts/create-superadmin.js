@@ -20,9 +20,9 @@ const createSuperAdmin = async () => {
         }
 
         // Get super admin details from environment or prompt
-        const email = process.env.SUPERADMIN_EMAIL || 'admin@supportflow.com';
-        const password = process.env.SUPERADMIN_PASSWORD || 'admin123456';
-        const name = process.env.SUPERADMIN_NAME || 'Super Admin';
+        const email = process.env.SUPERADMIN_EMAIL || '';
+        const password = process.env.SUPERADMIN_PASSWORD || '';
+        const name = process.env.SUPERADMIN_NAME || '';
 
         // Hash password
         const passwordHash = await bcrypt.hash(password, 12);

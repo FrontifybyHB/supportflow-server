@@ -32,7 +32,11 @@ export const enqueueOtpEmail = async ({ to, otp, purpose }) => {
             purpose,
             error: error.message,
         });
-        return null;
+        return {
+            queued: false,
+            delivered: false,
+            error: error.message,
+        };
     }
 };
 

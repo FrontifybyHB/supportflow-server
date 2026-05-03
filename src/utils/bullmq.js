@@ -20,16 +20,29 @@ let emailQueue;
 let emailWorker;
 let queueInitStarted = false;
 
-const sendEmailInBackground = ({ to, subject, html, text }) => {
-    setImmediate(() => {
-        sendEmail({ to, subject, html, text }).catch((error) => {
-            logger.error("Inline background email fallback failed", {
-                to,
-                subject,
-                error: error.message,
-            });
-        });
+const summarizeEmailResult = (result = {}) => ({
+    skipped: Boolean(result.skipped),
+    messageId: result.messageId,
+    accepted: result.accepted,
+    rejected: result.rejected,
+});
+
+const sendEmailDirectFallback = async ({ to, subject, html, text }) => {
+    const result = await sendEmail({ to, subject, html, text });
+    const email = summarizeEmailResult(result);
+
+    logger.info("Email sent with direct fallback", {
+        to,
+        subject,
+        skipped: email.skipped,
+        messageId: email.messageId,
     });
+
+    return {
+        queued: false,
+        fallback: "direct-email",
+        email,
+    };
 };
 
 export const warmEmailQueue = () => {
@@ -63,34 +76,30 @@ export const queueEmail = async ({ to, subject, html, text, metadata = {} }) => 
     }
 
     if (!queue) {
-        logger.warn("Email queue unavailable; sending email in background fallback", {
+        logger.warn("Email queue unavailable; sending email with direct fallback", {
             to,
             subject,
         });
-        sendEmailInBackground({ to, subject, html, text });
-        return {
-            queued: false,
-            fallback: "background-email",
-        };
+        return sendEmailDirectFallback({ to, subject, html, text });
     }
 
     try {
-        return await queue.add(
+        const job = await queue.add(
             "send-email",
             { to, subject, html, text, metadata },
             defaultJobOptions
         );
+        return {
+            queued: true,
+            jobId: job.id,
+        };
     } catch (error) {
-        logger.error("Email queue add failed; using background fallback", {
+        logger.error("Email queue add failed; using direct fallback", {
             to,
             subject,
             error: error.message,
         });
-        sendEmailInBackground({ to, subject, html, text });
-        return {
-            queued: false,
-            fallback: "background-email",
-        };
+        return sendEmailDirectFallback({ to, subject, html, text });
     }
 };
 

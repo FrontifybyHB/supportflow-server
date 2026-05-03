@@ -1,5 +1,6 @@
 import express from "express";
 
+import agentController from "../controllers/agent.controller.js";
 import businessController from "../controllers/business.controller.js";
 import {
     protect,
@@ -11,6 +12,8 @@ import {
 import { validate } from "../middlewares/validator.middleware.js";
 import {
     createBusinessValidator,
+    createAgentValidator,
+    updateAgentValidator,
     updateBusinessValidator,
 } from "../validators/auth.validator.js";
 
@@ -55,6 +58,38 @@ router.get(
     requireActiveBusiness,
     requireRole("admin"),
     businessController.getStats
+);
+
+router.post(
+    "/agents",
+    protect,
+    requireVerified,
+    requireTenant,
+    requireActiveBusiness,
+    requireRole("admin"),
+    validate(createAgentValidator),
+    agentController.createAgent
+);
+
+router.get(
+    "/agents",
+    protect,
+    requireVerified,
+    requireTenant,
+    requireActiveBusiness,
+    requireRole("admin"),
+    agentController.listAgents
+);
+
+router.patch(
+    "/agents/:id",
+    protect,
+    requireVerified,
+    requireTenant,
+    requireActiveBusiness,
+    requireRole("admin"),
+    validate(updateAgentValidator),
+    agentController.updateAgent
 );
 
 export default router;

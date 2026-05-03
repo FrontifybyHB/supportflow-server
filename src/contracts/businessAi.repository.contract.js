@@ -24,6 +24,10 @@ class BusinessAIRepositoryContract {
   async updateBusinessActiveModel(_businessId, _modelId) {
     throw new Error("Method not implemented: updateBusinessActiveModel");
   }
+
+  async setDefaultModel(_modelId) {
+    throw new Error("Method not implemented: setDefaultModel");
+  }
 }
 
 export default BusinessAIRepositoryContract;

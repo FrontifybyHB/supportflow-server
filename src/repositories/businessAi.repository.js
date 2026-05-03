@@ -55,6 +55,18 @@ class BusinessAIRepository extends BusinessAIRepositoryContract {
       .select("name isActive activeAIModel updatedAt")
       .lean();
   }
+
+  async setDefaultModel(modelId) {
+    await this.aiModel.updateMany({}, { isDefault: false });
+    return this.aiModel
+      .findByIdAndUpdate(
+        modelId,
+        { isDefault: true, isActive: true },
+        { returnDocument: "after", runValidators: true }
+      )
+      .select("name provider description isActive isDefault config createdAt updatedAt")
+      .lean();
+  }
 }
 
 export default BusinessAIRepository;

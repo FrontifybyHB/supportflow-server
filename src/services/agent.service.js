@@ -5,6 +5,7 @@ import userRepository from "../repositories/user.repository.js";
 import appError from "../utils/appError.js";
 
 const PASSWORD_SALT_ROUNDS = 12;
+const AGENT_EMAIL_IN_OTHER_BUSINESS = "AGENT_EMAIL_IN_OTHER_BUSINESS";
 
 const toAgentResponse = (user) => ({
     _id: user._id,
@@ -26,7 +27,12 @@ class AgentService {
         const existing = await this.userRepo.findByEmailWithPassword(normalizedEmail);
 
         if (existing?.businessId && existing.businessId.toString() !== businessId.toString()) {
-            throw appError("User already belongs to another business", 409);
+            const error = appError(
+                "This email is already used by an account in another business. Use a different email address.",
+                409
+            );
+            error.code = AGENT_EMAIL_IN_OTHER_BUSINESS;
+            throw error;
         }
 
         if (existing?.role === ROLES.SUPERADMIN) {

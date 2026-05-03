@@ -6,7 +6,7 @@
   "main": "server.js",
   "scripts": {
     "test": "node --test",
-    "start": "node server.js",
+     "start": "npm install --production && node server.js",
     "start-watch": "nodemon --legacy-watch --inspect --watch server.js --watch src --ext js,mjs,cjs,json server.js",
     "dev": "nodemon --legacy-watch --watch server.js --watch src --ext js,mjs,cjs,json server.js",
     "lint": "eslint .",

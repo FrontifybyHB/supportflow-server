@@ -5,6 +5,9 @@ import ApiResponse from "../utils/apiResponse.js";
 const errorHandler = (err, req, res, next) => {
     void next;
 
+const errorHandler = (err, req, res, _next) => {
+    void _next;
+
     const statusCode = err.statusCode || 500;
 
     const nodeEnv = config.NODE_ENV;
@@ -17,12 +20,18 @@ const errorHandler = (err, req, res, next) => {
         stack: nodeEnv === "development" ? err.stack : undefined,
     });
 
-    const message =
-        nodeEnv === "production" && statusCode >= 500
-            ? "Internal Server Error"
-            : err.message;
+    // Frontend-safe response
+    const isServerError = statusCode >= 500;
 
-    res.status(statusCode).json(ApiResponse.error(message, statusCode));
+    res.status(statusCode).json({
+        success: false,
+        message:
+            nodeEnv === "production" && isServerError
+                ? "Internal Server Error"
+                : err.message,
+        code: err.code,
+        stack: nodeEnv === "development" ? err.stack : undefined,
+    });
 };
 
 export default errorHandler;

@@ -1,0 +1,1439 @@
+{
+  "info": {
+    "_postman_id": "supportflow-server-collection-001",
+    "name": "SupportFlow Server — API Test Suite",
+    "description": "Auto-generated Postman collection covering every endpoint actually exposed by SupportFlow-server (auth, business, agents, customer, superadmin).\n\nUsage:\n1. Import this file into Postman.\n2. Open the collection variables (Variables tab) — set BASE_URL if your server is not on http://localhost:3000.\n3. Run requests top-to-bottom in each folder. Tokens and IDs chain automatically into collection variables.\n4. For OTP-gated steps (verify-otp, reset-password) set otp_A / otp_B / resetOtp_A manually from the email/log output before running the request.\n5. Superadmin folder requires a manually seeded superadmin (see folder description).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Collection-level baseline assertions (run after every request)",
+          "pm.test('Response time is reasonable (< 5000ms)', function () {",
+          "    pm.expect(pm.response.responseTime).to.be.below(5000);",
+          "});",
+          "pm.test('Body has success field', function () {",
+          "    try {",
+          "        const json = pm.response.json();",
+          "        pm.expect(json).to.have.property('success');",
+          "    } catch (e) { /* non-JSON tolerated */ }",
+          "});",
+          "pm.test('No passwordHash leak in response', function () {",
+          "    pm.expect(pm.response.text()).to.not.include('passwordHash');",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "BASE_URL", "value": "http://localhost:3000", "type": "string" },
+    { "key": "API_PREFIX", "value": "/api/v1", "type": "string" },
+    { "key": "adminEmailA", "value": "admin_a@testbusiness.com", "type": "string" },
+    { "key": "adminEmailB", "value": "admin_b@testbusiness.com", "type": "string" },
+    { "key": "adminPasswordA", "value": "Test@1234", "type": "string" },
+    { "key": "adminPasswordB", "value": "Test@5678", "type": "string" },
+    { "key": "agentEmailA", "value": "agent_a@alphacorp.com", "type": "string" },
+    { "key": "agentPasswordA", "value": "Agent@1234", "type": "string" },
+    { "key": "superadminEmail", "value": "super@platform.com", "type": "string" },
+    { "key": "superadminPassword", "value": "Super@1234", "type": "string" },
+    { "key": "userId_A", "value": "", "type": "string" },
+    { "key": "userId_B", "value": "", "type": "string" },
+    { "key": "otp_A", "value": "", "type": "string" },
+    { "key": "otp_B", "value": "", "type": "string" },
+    { "key": "resetOtp_A", "value": "", "type": "string" },
+    { "key": "adminToken_A", "value": "", "type": "string" },
+    { "key": "adminToken_B", "value": "", "type": "string" },
+    { "key": "agentToken_A", "value": "", "type": "string" },
+    { "key": "superToken", "value": "", "type": "string" },
+    { "key": "businessId_A", "value": "", "type": "string" },
+    { "key": "businessId_B", "value": "", "type": "string" },
+    { "key": "agentId_A", "value": "", "type": "string" },
+    { "key": "customerId_A", "value": "", "type": "string" },
+    { "key": "customerToken_A", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "01 — Auth (Happy Path)",
+      "description": "Registration → OTP verification → Login → /me. Run in order. After 'Register Admin A/B', open the OTP from your email or server logs and paste it into the otp_A / otp_B collection variable, then run the matching 'Verify OTP' request.",
+      "item": [
+        {
+          "name": "Register Admin A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Returns userId', function () { pm.expect(json.data).to.have.property('userId'); });",
+                  "if (json?.data?.userId) pm.collectionVariables.set('userId_A', json.data.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/register", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Admin Alpha\",\n  \"email\": \"{{adminEmailA}}\",\n  \"password\": \"{{adminPasswordA}}\"\n}" }
+          }
+        },
+        {
+          "name": "Register Admin B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const json = pm.response.json();",
+                  "if (json?.data?.userId) pm.collectionVariables.set('userId_B', json.data.userId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/register", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Admin Beta\",\n  \"email\": \"{{adminEmailB}}\",\n  \"password\": \"{{adminPasswordB}}\"\n}" }
+          }
+        },
+        {
+          "name": "Resend OTP (Admin A)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/resend-otp", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "resend-otp"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{userId_A}}\"\n}" }
+          }
+        },
+        {
+          "name": "Verify OTP (Admin A) — paste otp_A first",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('accessToken returned', function () { pm.expect(json.data).to.have.property('accessToken'); });",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('adminToken_A', json.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/verify-otp", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "verify-otp"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{userId_A}}\",\n  \"otp\": \"{{otp_A}}\"\n}" }
+          }
+        },
+        {
+          "name": "Verify OTP (Admin B) — paste otp_B first",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('adminToken_B', json.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/verify-otp", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "verify-otp"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{userId_B}}\",\n  \"otp\": \"{{otp_B}}\"\n}" }
+          }
+        },
+        {
+          "name": "Login Admin A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('accessToken returned', function () { pm.expect(json.data).to.have.property('accessToken'); });",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('adminToken_A', json.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmailA}}\",\n  \"password\": \"{{adminPasswordA}}\"\n}" }
+          }
+        },
+        {
+          "name": "Login Admin B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('adminToken_B', json.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmailB}}\",\n  \"password\": \"{{adminPasswordB}}\"\n}" }
+          }
+        },
+        {
+          "name": "Get Me (Admin A)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('User object returned', function () { pm.expect(json.data).to.have.property('user'); });",
+                  "pm.test('Email matches', function () { pm.expect(json.data.user.email).to.eql(pm.collectionVariables.get('adminEmailA')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get-Me alias (Admin A)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/get-me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "get-me"] }
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "description": "Uses the refreshToken httpOnly cookie set by the login response. Postman keeps cookies per domain automatically.",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/refresh", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "refresh"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('adminToken_A', json.data.accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Refresh Access Token (alias /refresh-token)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/refresh-token", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "refresh-token"] }
+          }
+        },
+        {
+          "name": "Forgot Password (Admin A)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/forgot-password", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "forgot-password"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmailA}}\"\n}" }
+          }
+        },
+        {
+          "name": "Reset Password (Admin A) — paste resetOtp_A first",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/reset-password", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "reset-password"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{userId_A}}\",\n  \"otp\": \"{{resetOtp_A}}\",\n  \"newPassword\": \"NewTest@1234\"\n}" }
+          }
+        },
+        {
+          "name": "Logout (Admin A)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/logout", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "logout"] }
+          }
+        },
+        {
+          "name": "Logout All Devices (Admin A)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/logout-all", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "logout-all"] }
+          }
+        },
+        {
+          "name": "Google Login (template — needs real idToken)",
+          "description": "Replace 'PASTE_GOOGLE_ID_TOKEN' with a real Google ID token. Will return 503 if GOOGLE_CLIENT_ID is not configured server-side.",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/google", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "google"] },
+            "body": { "mode": "raw", "raw": "{\n  \"idToken\": \"PASTE_GOOGLE_ID_TOKEN\",\n  \"businessName\": \"Alpha Corp Support\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 — Auth (Negative Tests)",
+      "description": "Validation failures, auth failures, and duplicate-email guards.",
+      "item": [
+        {
+          "name": "[NEGATIVE] Register — weak password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/register", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Weak User\",\n  \"email\": \"weak@test.com\",\n  \"password\": \"weakpass\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422 (validation failed)', function () { pm.expect(pm.response.code).to.equal(422); });",
+                  "pm.test('success is false', function () { pm.expect(pm.response.json().success).to.be.false; });",
+                  "pm.test('errors map present', function () { pm.expect(pm.response.json()).to.have.property('errors'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Register — invalid email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/register", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Invalid Email\",\n  \"email\": \"not-an-email\",\n  \"password\": \"Test@1234\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Register — duplicate email",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/register", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "register"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Duplicate\",\n  \"email\": \"{{adminEmailA}}\",\n  \"password\": \"Test@1234\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () { pm.expect(pm.response.code).to.equal(400); });",
+                  "pm.test('Message contains \"already registered\"', function () { pm.expect(pm.response.json().message).to.match(/already registered/i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Login — wrong password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{adminEmailA}}\",\n  \"password\": \"WrongPass1!\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });",
+                  "pm.test('success is false', function () { pm.expect(pm.response.json().success).to.be.false; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Login — non-existent user",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"ghost@nowhere.io\",\n  \"password\": \"Test@1234\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Login — missing fields",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] /auth/me without token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] /auth/me with invalid token",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer not.a.realtoken" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "me"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Verify OTP — invalid otp",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/verify-otp", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "verify-otp"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"{{userId_A}}\",\n  \"otp\": \"000000\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () { pm.expect(pm.response.code).to.equal(400); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Verify OTP — invalid userId format",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/verify-otp", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "verify-otp"] },
+            "body": { "mode": "raw", "raw": "{\n  \"userId\": \"not-a-mongo-id\",\n  \"otp\": \"123456\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Refresh — no cookie",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/refresh", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "refresh"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Logout-all — without token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/logout-all", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "logout-all"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 — Business / Workspace",
+      "description": "Create the workspace tied to each verified admin account. Both admin tokens (A and B) must be set first.",
+      "item": [
+        {
+          "name": "Create Business A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('business returned', function () { pm.expect(json.data).to.have.property('business'); });",
+                  "if (json?.data?.business?._id) pm.collectionVariables.set('businessId_A', json.data.business._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessName\": \"Alpha Corp Support\",\n  \"industry\": \"Technology\"\n}" }
+          }
+        },
+        {
+          "name": "Create Business B",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const json = pm.response.json();",
+                  "if (json?.data?.business?._id) pm.collectionVariables.set('businessId_B', json.data.business._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_B}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessName\": \"Beta Retail Support\",\n  \"industry\": \"Retail\"\n}" }
+          }
+        },
+        {
+          "name": "Get My Business (A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('business object present', function () { pm.expect(json.data).to.have.property('business'); });",
+                  "pm.test('business name = Alpha Corp Support', function () { pm.expect(json.data.business.name).to.eql('Alpha Corp Support'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business/me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business", "me"] }
+          }
+        },
+        {
+          "name": "Get My Business (B)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('Different business id from A', function () { pm.expect(json.data.business._id).to.not.eql(pm.collectionVariables.get('businessId_A')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_B}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business/me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business", "me"] }
+          }
+        },
+        {
+          "name": "[NEGATIVE] Create Business — without token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessName\": \"No Auth Co\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Create Business — short name (validation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessName\": \"A\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Create Business — already owned",
+          "description": "Re-running create business with the same admin token should be rejected because user already belongs to a business.",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/business", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["business"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessName\": \"Duplicate Workspace\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', function () { pm.expect(pm.response.code).to.equal(400); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 — Agent Management",
+      "description": "Admin-only CRUD on agents under the same business. Newly created agents are auto-verified, so they can log in directly without OTP.",
+      "item": [
+        {
+          "name": "Create Agent (under Business A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('agent returned', function () { pm.expect(json.data).to.have.property('agent'); });",
+                  "pm.test('role = agent', function () { pm.expect(json.data.agent.role).to.eql('agent'); });",
+                  "if (json?.data?.agent?._id) pm.collectionVariables.set('agentId_A', json.data.agent._id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Agent Alice\",\n  \"email\": \"{{agentEmailA}}\",\n  \"password\": \"{{agentPasswordA}}\"\n}" }
+          }
+        },
+        {
+          "name": "List Agents (Business A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('agents is array', function () { pm.expect(json.data.agents).to.be.an('array'); });",
+                  "pm.test('agentId_A is in list', function () {",
+                  "  const ids = (json.data.agents || []).map(a => a._id);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('agentId_A'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents"] }
+          }
+        },
+        {
+          "name": "Login as Agent A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const json = pm.response.json();",
+                  "pm.test('accessToken returned', function () { pm.expect(json.data).to.have.property('accessToken'); });",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('agentToken_A', json.data.accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{agentEmailA}}\",\n  \"password\": \"{{agentPasswordA}}\"\n}" }
+          }
+        },
+        {
+          "name": "Get Me (Agent A)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('Role is agent', function () { pm.expect(pm.response.json().data.user.role).to.eql('agent'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{agentToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/me", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Deactivate Agent A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('isActive false', function () { pm.expect(pm.response.json().data.agent.isActive).to.be.false; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents/{{agentId_A}}", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents", "{{agentId_A}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" }
+          }
+        },
+        {
+          "name": "Reactivate Agent A",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('isActive true', function () { pm.expect(pm.response.json().data.agent.isActive).to.be.true; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents/{{agentId_A}}", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents", "{{agentId_A}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": true\n}" }
+          }
+        },
+        {
+          "name": "[NEGATIVE] Create Agent — without token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ghost\",\n  \"email\": \"ghost@a.com\",\n  \"password\": \"Test@1234\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Create Agent — agent token (forbidden)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{agentToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Bad Agent\",\n  \"email\": \"bad@a.com\",\n  \"password\": \"Test@1234\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Create Agent — invalid email",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents"] },
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Bad Email\",\n  \"email\": \"not-email\",\n  \"password\": \"Test@1234\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Update Agent — invalid id",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_A}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents/not-a-mongo-id", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents", "not-a-mongo-id"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[ISOLATION] Business B cannot list Business A agents",
+          "description": "Listing agents with B's admin token must not include any of A's agents.",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_B}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('No Business A agentId leak', function () {",
+                  "  const ids = (pm.response.json().data.agents || []).map(a => a._id);",
+                  "  pm.expect(ids).to.not.include(pm.collectionVariables.get('agentId_A'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[ISOLATION] Business B cannot update Business A agent",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken_B}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/agents/{{agentId_A}}", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["agents", "{{agentId_A}}"] },
+            "body": { "mode": "raw", "raw": "{\n  \"isActive\": false\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Blocked (404 or 403)', function () { pm.expect(pm.response.code).to.be.oneOf([403, 404]); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 — Customer (Public Widget)",
+      "description": "Public endpoint used by the in-app widget to identify a visitor against a business workspace.",
+      "item": [
+        {
+          "name": "Identify Customer (with email)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "const json = pm.response.json();",
+                  "pm.test('customerToken returned', function () { pm.expect(json.data).to.have.property('customerToken'); });",
+                  "pm.test('customerId returned', function () { pm.expect(json.data).to.have.property('customerId'); });",
+                  "if (json?.data?.customerId) pm.collectionVariables.set('customerId_A', json.data.customerId);",
+                  "if (json?.data?.customerToken) pm.collectionVariables.set('customerToken_A', json.data.customerToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/customer/identify", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["customer", "identify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessId\": \"{{businessId_A}}\",\n  \"name\": \"John Customer\",\n  \"email\": \"john@customer.com\",\n  \"phone\": \"+15551234567\"\n}" }
+          }
+        },
+        {
+          "name": "Identify Customer (guest, no email)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/customer/identify", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["customer", "identify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessId\": \"{{businessId_A}}\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 201', function () { pm.expect(pm.response.code).to.equal(201); });",
+                  "pm.test('Default name is Guest', function () { pm.expect(pm.response.json().data.name).to.eql('Guest'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Identify Customer (re-identify same email = upsert)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/customer/identify", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["customer", "identify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessId\": \"{{businessId_A}}\",\n  \"name\": \"John Customer Updated\",\n  \"email\": \"john@customer.com\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Same customerId returned', function () { pm.expect(pm.response.json().data.customerId).to.eql(pm.collectionVariables.get('customerId_A')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Identify — invalid businessId format",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/customer/identify", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["customer", "identify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessId\": \"not-a-mongo-id\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Identify — non-existent businessId",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/customer/identify", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["customer", "identify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessId\": \"507f1f77bcf86cd799439011\",\n  \"name\": \"Ghost\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.expect(pm.response.code).to.equal(404); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Identify — invalid email format",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/customer/identify", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["customer", "identify"] },
+            "body": { "mode": "raw", "raw": "{\n  \"businessId\": \"{{businessId_A}}\",\n  \"email\": \"not-email\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 — SuperAdmin",
+      "description": "Requires a user with role='superadmin'. The /auth/register endpoint cannot create one — seed manually in Mongo (db.users.updateOne({email:'super@platform.com'},{$set:{role:'superadmin', isEmailVerified:true}})) or via a seed script. Then run 'Login Superadmin' first to populate {{superToken}}. Adjust superadminEmail/superadminPassword variables as needed.",
+      "item": [
+        {
+          "name": "Login Superadmin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json?.data?.accessToken) pm.collectionVariables.set('superToken', json.data.accessToken);",
+                  "pm.test('accessToken set', function () { pm.expect(pm.collectionVariables.get('superToken')).to.be.a('string').and.not.empty; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/auth/login", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"{{superadminEmail}}\",\n  \"password\": \"{{superadminPassword}}\"\n}" }
+          }
+        },
+        {
+          "name": "List All Businesses",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('businesses is array', function () { pm.expect(pm.response.json().data.businesses).to.be.an('array'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/businesses", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "businesses"] }
+          }
+        },
+        {
+          "name": "List All Users (paginated)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const data = pm.response.json().data;",
+                  "pm.test('Pagination fields present', function () {",
+                  "  pm.expect(data).to.have.property('users');",
+                  "  pm.expect(data).to.have.property('total');",
+                  "  pm.expect(data).to.have.property('page');",
+                  "  pm.expect(data).to.have.property('totalPages');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/users?page=1&limit=20",
+              "host": ["{{BASE_URL}}{{API_PREFIX}}"],
+              "path": ["superadmin", "users"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Users — filter role=admin",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/users?role=admin",
+              "host": ["{{BASE_URL}}{{API_PREFIX}}"],
+              "path": ["superadmin", "users"],
+              "query": [{ "key": "role", "value": "admin" }]
+            }
+          }
+        },
+        {
+          "name": "List Users — filter by businessId_A",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": {
+              "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/users?businessId={{businessId_A}}",
+              "host": ["{{BASE_URL}}{{API_PREFIX}}"],
+              "path": ["superadmin", "users"],
+              "query": [{ "key": "businessId", "value": "{{businessId_A}}" }]
+            }
+          }
+        },
+        {
+          "name": "Platform Stats",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "const d = pm.response.json().data;",
+                  "['totalBusinesses','activeBusinesses','totalAgents','totalCustomers','totalUsers'].forEach(function (k) {",
+                  "  pm.test('Has ' + k, function () { pm.expect(d).to.have.property(k); });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/stats", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "stats"] }
+          }
+        },
+        {
+          "name": "Toggle Business B (deactivate then reactivate by re-running)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/businesses/{{businessId_B}}/toggle", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "businesses", "{{businessId_B}}", "toggle"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('isActive boolean returned', function () { pm.expect(pm.response.json().data.business.isActive).to.be.a('boolean'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update User Role (promote agent → admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{superToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/users/{{agentId_A}}/role", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "users", "{{agentId_A}}", "role"] },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"admin\",\n  \"businessId\": \"{{businessId_A}}\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('Role updated', function () { pm.expect(pm.response.json().data.user.role).to.eql('admin'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] SuperAdmin — without token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/stats", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "stats"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 401', function () { pm.expect(pm.response.code).to.equal(401); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] SuperAdmin — admin token (forbidden)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken_A}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/stats", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "stats"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 403', function () { pm.expect(pm.response.code).to.equal(403); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Toggle Business — invalid id",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superToken}}" }],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/businesses/not-a-mongo-id/toggle", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "businesses", "not-a-mongo-id", "toggle"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Update User Role — invalid role",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{superToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/superadmin/users/{{agentId_A}}/role", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["superadmin", "users", "{{agentId_A}}", "role"] },
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"god\"\n}" }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 422', function () { pm.expect(pm.response.code).to.equal(422); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 — Smoke / Health",
+      "item": [
+        {
+          "name": "Server root",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}/", "host": ["{{BASE_URL}}"], "path": [""] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', function () { pm.expect(pm.response.code).to.equal(200); });",
+                  "pm.test('Welcome message', function () { pm.expect(pm.response.json().message).to.match(/Support Flow AI/i); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[NEGATIVE] Unknown route → 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{BASE_URL}}{{API_PREFIX}}/this-does-not-exist", "host": ["{{BASE_URL}}{{API_PREFIX}}"], "path": ["this-does-not-exist"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 404', function () { pm.expect(pm.response.code).to.equal(404); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

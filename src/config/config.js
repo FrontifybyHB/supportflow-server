@@ -6,15 +6,13 @@ const _config = {
     NODE_ENV: process.env.NODE_ENV || 'development',
     PORT: process.env.PORT || 3000,
     WEB_URL: process.env.WEB_URL || 'https://yourdomain.com',
-    FRONTEND_URL: process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173',
-    DB_URL: process.env.DB_URL || 'mongodb://localhost:27017/mydatabase',
+    CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
+    DB_URL: process.env.DB_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/mydatabase',
+    JWT_SECRET: process.env.JWT_SECRET,
     JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || process.env.JWT_SECRET,
-    JWT_REFRESH_SECRET:
-        process.env.JWT_REFRESH_SECRET ||
-        process.env.JWT_ACCESS_SECRET ||
-        process.env.JWT_SECRET,
-    JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '1h',
-    JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '30d',
+    JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+    JWT_ACCESS_EXPIRY: process.env.JWT_ACCESS_EXPIRY || '15m',
+    JWT_REFRESH_EXPIRY: process.env.JWT_REFRESH_EXPIRY || '7d',
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     GOOGLE_REFRESH_TOKEN: process.env.GOOGLE_REFRESH_TOKEN,
@@ -22,8 +20,17 @@ const _config = {
     GMAIL_USER: process.env.GMAIL_USER,
     EMAIL_HOST: process.env.EMAIL_HOST,
     EMAIL_PORT: process.env.EMAIL_PORT,
+    EMAIL_FROM: process.env.EMAIL_FROM,
+    EMAIL_MAX_CONNECTIONS: process.env.EMAIL_MAX_CONNECTIONS,
+    EMAIL_MAX_MESSAGES: process.env.EMAIL_MAX_MESSAGES,
     EMAIL_USER: process.env.EMAIL_USER,
     EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+    REDIS_URL: process.env.REDIS_URL,
+    UPSTASH_REDIS_URL: process.env.UPSTASH_REDIS_URL,
+    REDIS_CONNECT_TIMEOUT_MS: process.env.REDIS_CONNECT_TIMEOUT_MS,
+    REDIS_COMMAND_TIMEOUT_MS: process.env.REDIS_COMMAND_TIMEOUT_MS,
+    UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
+    UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
 };
 
 _config.JWT_SECRET = _config.JWT_ACCESS_SECRET;

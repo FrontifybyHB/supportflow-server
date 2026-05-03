@@ -1,51 +1,55 @@
 import express from "express";
+
 import superAdminController from "../controllers/superadmin.controller.js";
-import { protect, restrictTo } from "../middlewares/auth.middleware.js";
-import { objectIdParam, validate } from "../middlewares/validator.middleware.js";
+import { protect, requireRole } from "../middlewares/auth.middleware.js";
+import { validate } from "../middlewares/validator.middleware.js";
 import {
-  modelValidator,
-  modelUpdateValidator,
-  planValidator,
-} from "../validators/superadmin.validator.js";
+    bootstrapSuperAdminValidator,
+    businessPlanValidator,
+    businessStatusValidator,
+    mongoIdParamValidator,
+    updateUserRoleValidator,
+} from "../validators/auth.validator.js";
 
 const router = express.Router();
 
-router.use(protect);
-router.use(restrictTo("superadmin"));
+// Bootstrap route - no auth required for initial setup
+router.post(
+    "/bootstrap",
+    validate(bootstrapSuperAdminValidator),
+    superAdminController.bootstrapSuperAdmin
+);
 
-router.get("/stats", superAdminController.getStats);
-router.get("/usage", superAdminController.getUsage);
+// All other routes require super admin auth
+router.use(protect, requireRole("superadmin"));
 
 router.get("/businesses", superAdminController.listBusinesses);
-router.get("/businesses/:id", validate(objectIdParam()), superAdminController.getBusiness);
-router.patch("/businesses/:id/suspend", validate(objectIdParam()), superAdminController.suspendBusiness);
-router.patch("/businesses/:id/activate", validate(objectIdParam()), superAdminController.activateBusiness);
-router.patch(
-  "/businesses/:id/plan",
-  validate(objectIdParam()),
-  validate(planValidator),
-  superAdminController.changeBusinessPlan
+router.get(
+    "/businesses/:id",
+    validate(mongoIdParamValidator),
+    superAdminController.getBusiness
 );
-
+router.patch(
+    "/businesses/:id/toggle",
+    validate(mongoIdParamValidator),
+    superAdminController.toggleBusiness
+);
+router.patch(
+    "/businesses/:id/status",
+    validate(businessStatusValidator),
+    superAdminController.updateBusinessStatus
+);
+router.patch(
+    "/businesses/:id/plan",
+    validate(businessPlanValidator),
+    superAdminController.updateBusinessPlan
+);
 router.get("/users", superAdminController.listUsers);
-router.get("/users/:id", validate(objectIdParam()), superAdminController.getUser);
-router.patch("/users/:id/deactivate", validate(objectIdParam()), superAdminController.deactivateUser);
-router.patch("/users/:id/reactivate", validate(objectIdParam()), superAdminController.reactivateUser);
-
-router.get("/models", superAdminController.listModels);
-router.get("/models/:id", validate(objectIdParam()), superAdminController.getModel);
-router.post(
-  "/models",
-  validate(modelValidator),
-  superAdminController.createModel
-);
 router.patch(
-  "/models/:id",
-  validate(objectIdParam()),
-  validate(modelUpdateValidator),
-  superAdminController.updateModel
+    "/users/:id/role",
+    validate(updateUserRoleValidator),
+    superAdminController.updateUserRole
 );
-router.patch("/models/:id/default", validate(objectIdParam()), superAdminController.setDefaultModel);
-router.delete("/models/:id", validate(objectIdParam()), superAdminController.deleteModel);
+router.get("/stats", superAdminController.stats);
 
 export default router;

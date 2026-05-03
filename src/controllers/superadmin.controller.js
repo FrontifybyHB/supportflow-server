@@ -1,99 +1,76 @@
-import asyncHandler from "../utils/asyncHandler.js";
-import ApiResponse from "../utils/apiResponse.js";
 import superAdminService from "../services/superadmin.service.js";
+import asyncHandler from "../utils/asyncHandler.js";
+import { success } from "../utils/response.js";
 
 class SuperAdminController {
-  constructor(service = superAdminService) {
-    this.superAdminService = service;
-  }
+    constructor(service = superAdminService) {
+        this.superAdminService = service;
+    }
 
-  getStats = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.getPlatformStats();
-    res.status(200).json(ApiResponse.success(data, "Platform stats fetched"));
-  });
+    listBusinesses = asyncHandler(async (_req, res) => {
+        const result = await this.superAdminService.listBusinesses();
+        return success(res, result);
+    });
 
-  getUsage = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.getUsageStats();
-    res.status(200).json(ApiResponse.success(data, "Usage stats fetched"));
-  });
+    getBusiness = asyncHandler(async (req, res) => {
+        const result = await this.superAdminService.getBusinessDetail(req.params.id);
+        return success(res, result);
+    });
 
-  listBusinesses = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.listBusinesses(req.query);
-    res.status(200).json(ApiResponse.success(data, "Businesses fetched"));
-  });
+    updateBusinessStatus = asyncHandler(async (req, res) => {
+        const business = await this.superAdminService.updateBusinessStatus(
+            req.params.id,
+            req.body
+        );
+        return success(res, { business });
+    });
 
-  getBusiness = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.getBusiness(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "Business fetched"));
-  });
+    updateBusinessPlan = asyncHandler(async (req, res) => {
+        const business = await this.superAdminService.updateBusinessPlan(
+            req.params.id,
+            req.body
+        );
+        return success(res, { business });
+    });
 
-  suspendBusiness = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.suspendBusiness(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "Business suspended"));
-  });
+    toggleBusiness = asyncHandler(async (req, res) => {
+        const business = await this.superAdminService.toggleBusiness(req.params.id);
+        return success(res, { business });
+    });
 
-  activateBusiness = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.activateBusiness(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "Business activated"));
-  });
+    listUsers = asyncHandler(async (req, res) => {
+        const result = await this.superAdminService.listUsers({
+            page: req.query.page,
+            limit: req.query.limit,
+            role: req.query.role,
+            businessId: req.query.businessId,
+        });
 
-  changeBusinessPlan = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.changeBusinessPlan(
-      req.params.id,
-      req.body.plan
-    );
-    res.status(200).json(ApiResponse.success(data, "Business plan changed"));
-  });
+        return success(res, {
+            users: result.data,
+            total: result.total,
+            page: result.page,
+            totalPages: result.totalPages,
+        });
+    });
 
-  listUsers = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.listUsers(req.query);
-    res.status(200).json(ApiResponse.success(data, "Users fetched"));
-  });
+    updateUserRole = asyncHandler(async (req, res) => {
+        const user = await this.superAdminService.updateUserRole(
+            req.params.id,
+            req.body
+        );
+        return success(res, { user });
+    });
 
-  getUser = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.getUser(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "User fetched"));
-  });
+    stats = asyncHandler(async (_req, res) => {
+        const result = await this.superAdminService.stats();
+        return success(res, result);
+    });
 
-  deactivateUser = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.deactivateUser(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "User deactivated"));
-  });
-
-  reactivateUser = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.reactivateUser(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "User reactivated"));
-  });
-
-  listModels = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.listModels();
-    res.status(200).json(ApiResponse.success(data, "AI models fetched"));
-  });
-
-  getModel = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.getModel(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "AI model fetched"));
-  });
-
-  createModel = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.createModel(req.body);
-    res.status(201).json(ApiResponse.success(data, "AI model created", 201));
-  });
-
-  updateModel = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.updateModel(req.params.id, req.body);
-    res.status(200).json(ApiResponse.success(data, "AI model updated"));
-  });
-
-  setDefaultModel = asyncHandler(async (req, res) => {
-    const data = await this.superAdminService.setDefaultModel(req.params.id);
-    res.status(200).json(ApiResponse.success(data, "Default AI model changed"));
-  });
-
-  deleteModel = asyncHandler(async (req, res) => {
-    await this.superAdminService.deleteModel(req.params.id);
-    res.status(200).json(ApiResponse.success({ deleted: true }, "AI model deleted"));
-  });
+    bootstrapSuperAdmin = asyncHandler(async (req, res) => {
+        const result = await this.superAdminService.bootstrapSuperAdmin(req.body);
+        return success(res, result, result.alreadyExists ? 200 : 201);
+    });
 }
 
 const superAdminController = new SuperAdminController();

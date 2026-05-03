@@ -26,6 +26,10 @@ import agentRoutes from "./routes/agent.routes.js";
 import chatRoutes from "./routes/chat.routes.js";
 import businessAIRoutes from "./routes/businessAi.routes.js";
 import feedbackRoutes from "./routes/feedback.routes.js";
+import agentRoutes from "./routes/agent.routes.js";
+import businessRoutes from "./routes/business.routes.js";
+import customerRoutes from "./routes/customer.routes.js";
+import superAdminRoutes from "./routes/superadmin.routes.js";
 import errorHandler from './middlewares/error.handler.js'
 
 // Auth Routes
@@ -36,6 +40,10 @@ app.use('/api/agent', agentRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/business-ai', businessAIRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/v1/business', businessRoutes)
+app.use('/api/v1/agents', agentRoutes)
+app.use('/api/v1/customer', customerRoutes)
+app.use('/api/v1/superadmin', superAdminRoutes)
 
 
 
@@ -43,9 +51,9 @@ app.use('/api/feedback', feedbackRoutes);
 app.get('/', (req, res) => {
     res.status(200).json({
         status: 'success',
-        message: 'Welcome to the Backend Starter',
+        message: 'Welcome to the Support Flow AI',
         environment: config.NODE_ENV,
-        documentation: 'docs.testdog.in',
+        documentation: 'Welcome to the Support Flow AI',
     });
 });
 

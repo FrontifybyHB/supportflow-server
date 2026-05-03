@@ -1,219 +1,221 @@
-import User from "../models/user.model.js";
+import bcrypt from "bcrypt";
+
+import { ROLES } from "../constants/constants.js";
+import businessRepository from "../repositories/business.repository.js";
+import customerRepository from "../repositories/customer.repository.js";
+import sessionRepository from "../repositories/session.repository.js";
+import userRepository from "../repositories/user.repository.js";
+import cacheService from "./cache.service.js";
 import appError from "../utils/appError.js";
-import logger from "../loggers/winston.logger.js";
-import Ticket from "../models/ticket.model.js";
-import BusinessRepository from "../repositories/business.repository.js";
-import AIModelRepository from "../repositories/aiModel.repository.js";
-import aiClassificationService from "./aiClassification.service.js";
+
+const PASSWORD_SALT_ROUNDS = 12;
+
+const SUPERADMIN_CACHE_TTL = 30;
+const SUPERADMIN_CACHE_KEYS = Object.freeze({
+    stats: "superadmin:stats",
+    businesses: "superadmin:businesses:v2",
+});
 
 class SuperAdminService {
-  constructor(
-    businessRepository = new BusinessRepository(),
-    aiModelRepository = new AIModelRepository(),
-    classificationService = aiClassificationService
-  ) {
-    this.businessRepository = businessRepository;
-    this.aiModelRepository = aiModelRepository;
-    this.classificationService = classificationService;
-  }
-
-  async getPlatformStats() {
-    const [businessStats, totalUsers, activeUsers, inactiveUsers, totalTickets] =
-      await Promise.all([
-        this.businessRepository.getAggregatedStats(),
-        User.countDocuments(),
-        User.countDocuments({ isActive: { $ne: false } }),
-        User.countDocuments({ isActive: false }),
-        this.countTickets(),
-      ]);
-
-    return {
-      totalBusinesses: businessStats.totalBusinesses,
-      activeBusinesses: businessStats.activeBusinesses,
-      suspendedBusinesses: businessStats.suspendedBusinesses,
-      totalUsers,
-      activeUsers,
-      inactiveUsers,
-      totalTickets,
-      totalAiQueries: businessStats.totalAiCalls,
-    };
-  }
-
-  async getUsageStats() {
-    const [businessStats, usageByPlan] = await Promise.all([
-      this.businessRepository.getAggregatedStats(),
-      this.businessRepository.getUsageByPlan(),
-    ]);
-
-    return {
-      aiApiCalls: businessStats.totalAiCalls,
-      tokensConsumed: businessStats.totalTokensConsumed,
-      costEstimate: businessStats.totalCostEstimate,
-      usageByPlan,
-    };
-  }
-
-  async listBusinesses(filters = {}) {
-    const query = {};
-
-    if (filters.plan) query.plan = filters.plan;
-    if (filters.isActive !== undefined) {
-      query.isActive = filters.isActive === "true";
+    constructor({
+        userRepo = userRepository,
+        businessRepo = businessRepository,
+        customerRepo = customerRepository,
+        sessionRepo = sessionRepository,
+        cache = cacheService,
+    } = {}) {
+        this.userRepo = userRepo;
+        this.businessRepo = businessRepo;
+        this.customerRepo = customerRepo;
+        this.sessionRepo = sessionRepo;
+        this.cache = cache;
     }
 
-    return this.businessRepository.findAll(query);
-  }
+    async listBusinesses() {
+        const businesses = await this.cache.wrap(
+            SUPERADMIN_CACHE_KEYS.businesses,
+            SUPERADMIN_CACHE_TTL,
+            () => this.businessRepo.listAllWithOwnerAndAgentCount(ROLES.AGENT)
+        );
 
-  async getBusiness(id) {
-    const business = await this.businessRepository.findById(id);
-    if (!business) throw appError("Business not found", 404);
-    return business;
-  }
-
-  async suspendBusiness(id) {
-    const business = await this.businessRepository.updateStatus(id, false);
-    if (!business) throw appError("Business not found", 404);
-    logger.info(`Business suspended: ${id}`);
-    return business;
-  }
-
-  async activateBusiness(id) {
-    const business = await this.businessRepository.updateStatus(id, true);
-    if (!business) throw appError("Business not found", 404);
-    logger.info(`Business activated: ${id}`);
-    return business;
-  }
-
-  async changeBusinessPlan(id, plan) {
-    const business = await this.businessRepository.updatePlan(id, plan);
-    if (!business) throw appError("Business not found", 404);
-    logger.info(`Business plan changed: ${id} -> ${plan}`);
-    return business;
-  }
-
-  async listUsers(filters = {}) {
-    const query = {};
-
-    if (filters.businessId) query.businessId = filters.businessId;
-    if (filters.role) query.role = filters.role;
-    if (filters.isActive !== undefined) {
-      query.isActive = filters.isActive === "true";
+        return {
+            businesses: businesses.map((business) => ({
+                ...business,
+                ticketCount: 0,
+            })),
+            total: businesses.length,
+        };
     }
 
-    return User.find(query)
-      .select("-password -__v")
-      .populate("businessId", "name plan isActive")
-      .sort({ createdAt: -1 })
-      .lean();
-  }
+    async getBusinessDetail(businessId) {
+        const business = await this.businessRepo.findByIdWithOwner(businessId);
+        if (!business) {
+            throw appError("Business not found", 404);
+        }
 
-  async getUser(id) {
-    const user = await User.findById(id)
-      .select("-password -__v")
-      .populate("businessId", "name plan isActive")
-      .lean();
+        const [agents, totalCustomers] = await Promise.all([
+            this.userRepo.listByBusinessAndRole(businessId, ROLES.AGENT),
+            this.customerRepo.count({ businessId }),
+        ]);
 
-    if (!user) throw appError("User not found", 404);
-    return user;
-  }
+        if (business.ownerId) {
+            business.owner = business.ownerId;
+            delete business.ownerId;
+        }
 
-  async deactivateUser(id) {
-    const user = await User.findByIdAndUpdate(
-      id,
-      { isActive: false },
-      { returnDocument: "after", runValidators: true }
-    )
-      .select("-password -__v")
-      .lean();
-
-    if (!user) throw appError("User not found", 404);
-    logger.info(`User deactivated: ${id}`);
-    return user;
-  }
-
-  async reactivateUser(id) {
-    const user = await User.findByIdAndUpdate(
-      id,
-      { isActive: true },
-      { returnDocument: "after", runValidators: true }
-    )
-      .select("-password -__v")
-      .lean();
-
-    if (!user) throw appError("User not found", 404);
-    logger.info(`User reactivated: ${id}`);
-    return user;
-  }
-
-  async listModels() {
-    return this.aiModelRepository.findAll();
-  }
-
-  async getModel(id) {
-    const model = await this.aiModelRepository.findById(id);
-    if (!model) throw appError("AI model not found", 404);
-    return model;
-  }
-
-  async createModel(modelData) {
-    if (modelData.isDefault) {
-      const model = await this.aiModelRepository.create({
-        ...modelData,
-        isActive: true,
-      });
-      await this.aiModelRepository.setDefault(model._id);
-      this.classificationService.invalidateModelCache();
-      logger.info(`AI model created and set as default: ${model._id}`);
-      return this.aiModelRepository.findById(model._id);
+        return {
+            business,
+            agents,
+            counts: {
+                totalAgents: agents.length,
+                totalCustomers,
+                totalTickets: 0,
+                openTickets: 0,
+                resolvedTickets: 0,
+                kbEntries: 0,
+                aiHandledRate: "0%",
+            },
+        };
     }
 
-    const model = await this.aiModelRepository.create(modelData);
-    logger.info(`AI model created: ${model._id}`);
-    return model;
-  }
+    async updateBusinessStatus(businessId, { isActive, reason = "" }) {
+        const updated = await this.businessRepo.updateStatus(businessId, { isActive, reason });
 
-  async updateModel(id, updates) {
-    if (updates.isDefault) {
-      delete updates.isDefault;
+        if (!updated) {
+            throw appError("Business not found", 404);
+        }
+
+        if (!updated.isActive) {
+            await this.userRepo.deactivateByBusinessAndRoles(
+                businessId,
+                [ROLES.AGENT, ROLES.ADMIN]
+            );
+        }
+
+        await this.cache.delMany([
+            SUPERADMIN_CACHE_KEYS.stats,
+            SUPERADMIN_CACHE_KEYS.businesses,
+        ]);
+
+        return {
+            _id: updated._id,
+            name: updated.name,
+            isActive: updated.isActive,
+            suspensionReason: updated.suspensionReason,
+        };
     }
 
-    const model = await this.aiModelRepository.update(id, updates);
-    if (!model) throw appError("AI model not found", 404);
-    this.classificationService.invalidateModelCache();
-    logger.info(`AI model updated: ${id}`);
-    return model;
-  }
+    async toggleBusiness(businessId) {
+        const existing = await this.businessRepo.findById(businessId);
+        if (!existing) {
+            throw appError("Business not found", 404);
+        }
 
-  async setDefaultModel(id) {
-    const existingModel = await this.aiModelRepository.findById(id);
-    if (!existingModel) throw appError("AI model not found", 404);
-
-    const model = await this.aiModelRepository.setDefault(id);
-    this.classificationService.invalidateModelCache();
-    logger.info(`Default AI model changed: ${id}`);
-    return model;
-  }
-
-  async deleteModel(id) {
-    const model = await this.aiModelRepository.findById(id);
-    if (!model) throw appError("AI model not found", 404);
-    if (model.isDefault) throw appError("Default AI model cannot be deleted", 400);
-
-    await this.aiModelRepository.delete(id);
-    this.classificationService.invalidateModelCache();
-    logger.info(`AI model deleted: ${id}`);
-    return true;
-  }
-
-  async countTickets() {
-    try {
-      return Ticket.countDocuments();
-    } catch (error) {
-      logger.error("Failed to count tickets", { error: error.message });
-      return 0;
+        return this.updateBusinessStatus(businessId, { isActive: !existing.isActive });
     }
-  }
+
+    async updateBusinessPlan(businessId, { plan }) {
+        const updated = await this.businessRepo.updatePlan(businessId, plan);
+        if (!updated) {
+            throw appError("Business not found", 404);
+        }
+
+        await this.cache.delMany([
+            SUPERADMIN_CACHE_KEYS.stats,
+            SUPERADMIN_CACHE_KEYS.businesses,
+        ]);
+
+        return {
+            _id: updated._id,
+            name: updated.name,
+            plan: updated.plan,
+        };
+    }
+
+    async listUsers({ page, limit, role, businessId }) {
+        const filter = {};
+        if (role) filter.role = role;
+        if (businessId) filter.businessId = businessId;
+
+        return this.userRepo.paginate({ filter, page, limit });
+    }
+
+    async updateUserRole(userId, { role, businessId = null }) {
+        if (!Object.values(ROLES).includes(role)) {
+            throw appError("Invalid role", 400);
+        }
+
+        const updates = { role };
+        if (role === ROLES.SUPERADMIN) {
+            updates.businessId = null;
+        } else if (businessId) {
+            updates.businessId = businessId;
+        }
+
+        const user = await this.userRepo.updateById(userId, updates);
+        if (!user) {
+            throw appError("User not found", 404);
+        }
+
+        await this.sessionRepo.deleteAllForUser(user._id);
+        return user;
+    }
+
+    async stats() {
+        return this.cache.wrap(
+            SUPERADMIN_CACHE_KEYS.stats,
+            SUPERADMIN_CACHE_TTL,
+            async () => {
+                const [businessCounts, userCounts, totalCustomers] = await Promise.all([
+                    this.businessRepo.statsCounts(),
+                    this.userRepo.statsByRoles([ROLES.AGENT]),
+                    this.customerRepo.count({}),
+                ]);
+
+                return {
+                    totalBusinesses: businessCounts.total,
+                    activeBusinesses: businessCounts.active,
+                    totalAgents: userCounts.byRole[ROLES.AGENT] ?? 0,
+                    totalCustomers,
+                    totalUsers: userCounts.total,
+                };
+            }
+        );
+    }
+
+    async bootstrapSuperAdmin({ name, email, password }) {
+        const existingSuperAdmin = await this.userRepo.findOneByRole(ROLES.SUPERADMIN);
+        if (existingSuperAdmin) {
+            return {
+                alreadyExists: true,
+                message: "Super admin already exists",
+                email: existingSuperAdmin.email,
+            };
+        }
+
+        const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
+        const superAdmin = await this.userRepo.create({
+            name,
+            email: email.toLowerCase(),
+            passwordHash,
+            role: ROLES.SUPERADMIN,
+            authProviders: ["password"],
+            isEmailVerified: true,
+            isActive: true,
+        });
+
+        return {
+            alreadyExists: false,
+            message: "Super admin created successfully",
+            superAdmin: {
+                name: superAdmin.name,
+                email: superAdmin.email,
+                role: superAdmin.role,
+            },
+        };
+    }
 }
 
 const superAdminService = new SuperAdminService();
 export default superAdminService;
+export { SuperAdminService };

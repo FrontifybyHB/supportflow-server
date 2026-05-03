@@ -1,190 +1,353 @@
-import jwt from "jsonwebtoken";
-import appError from '../utils/appError.js';
-import config from "../config/config.js";
-import {hashPassword, comparePassword} from '../utils/password.js'
-import * as CONSTANT from "../constants/constants.js";
-import logger from "../loggers/winston.logger.js";
-import UserRepository from "../repositories/user.repository.js";
+import bcrypt from "bcrypt";
+import { OAuth2Client } from "google-auth-library";
 
-/**
- * User Service
- * ------------
- * Business logic only
- * Function-based
- * Beginner + Production ready
- */
+import appError from "../utils/appError.js";
+import config from "../config/config.js";
+import { AUTH_PROVIDERS, OTP_PURPOSES, ROLES } from "../constants/constants.js";
+import businessRepository from "../repositories/business.repository.js";
+import otpRepository from "../repositories/otp.repository.js";
+import sessionRepository from "../repositories/session.repository.js";
+import userRepository from "../repositories/user.repository.js";
+import { enqueueOtpEmail } from "../queues/email.queue.js";
+import { generateOtp, getOtpExpiresAt } from "../utils/otp.js";
+import {
+    generateAccessToken,
+    generateRefreshToken,
+    getRefreshTokenExpiresAt,
+    verifyRefreshToken,
+} from "../utils/tokens.js";
+
+const PASSWORD_SALT_ROUNDS = 12;
+const TOKEN_HASH_ROUNDS = 10;
+const googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
+
+const normalizeEmail = (email) => email?.trim().toLowerCase();
+
+const toSafeUser = (user) => {
+    const source = user?.toObject ? user.toObject() : user;
+    if (!source) return null;
+
+    delete source.passwordHash;
+    delete source.__v;
+    return source;
+};
 
 class UserService {
-    constructor(userRepository = new UserRepository()) {
-        this.userRepository = userRepository;
+    constructor({
+        userRepo = userRepository,
+        otpRepo = otpRepository,
+        sessionRepo = sessionRepository,
+        businessRepo = businessRepository,
+    } = {}) {
+        this.userRepo = userRepo;
+        this.otpRepo = otpRepo;
+        this.sessionRepo = sessionRepo;
+        this.businessRepo = businessRepo;
     }
 
-    /**
-     * Register new user
-     */
-    async register(userData) {
-        delete userData.role;
+    async register({ name, email, password }, request) {
+        const normalizedEmail = normalizeEmail(email);
+        const existingUser = await this.userRepo.existsByEmail(normalizedEmail);
 
-        const emailExists = await this.userRepository.findByEmail(userData.email);
-        if (emailExists) {
+        if (existingUser) {
             throw appError("Email already registered", 400);
         }
 
-        const usernameExists = await this.userRepository.findByUsername(userData.username);
-        if (usernameExists) {
-            throw appError("Username already taken", 400);
-        }
+        const passwordHash = await bcrypt.hash(password, PASSWORD_SALT_ROUNDS);
 
-        const hashedPassword = await hashPassword(userData.password);
-
-        const user = await this.userRepository.create({
-            username: userData.username,
-            email: userData.email,
-            password: hashedPassword,
-            name: userData.name,
-            role: "user",
-            isEmailVerified: false
+        const user = await this.userRepo.create({
+            name,
+            email: normalizedEmail,
+            passwordHash,
+            role: ROLES.CUSTOMER,
+            authProviders: [AUTH_PROVIDERS.PASSWORD],
+            isEmailVerified: false,
         });
 
-        user.password = undefined;
-        return user;
+        await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
+        const { refreshToken } = await this.createRefreshSession(user._id, request);
+
+        return {
+            refreshToken,
+            user: toSafeUser(user),
+            message: "Registration successful. Verification OTP queued.",
+        };
     }
 
-    /**
-     * Login user
-     */
-    async login(email, password) {
-        const user = await this.userRepository.findByEmail(email);
+    async login(email, password, request) {
+        const user = await this.userRepo.findByEmailWithPassword(normalizeEmail(email));
 
-        if (!user) {
+        if (!user || !user.passwordHash) {
             throw appError("Invalid email or password", 401);
         }
 
-        if (user.isActive === false) {
-            throw appError("Account deactivated", 401);
-        }
-
-        const isPasswordValid = await comparePassword(password, user.password);
-        if (!isPasswordValid) {
+        const passwordMatches = await bcrypt.compare(password, user.passwordHash);
+        if (!passwordMatches) {
             throw appError("Invalid email or password", 401);
         }
 
-        user.password = undefined;
-        return user;
+        if (!user.isActive) {
+            throw appError("Account is deactivated", 403);
+        }
+
+        if (!user.isEmailVerified) {
+            await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
+            return {
+                needsVerification: true,
+                userId: user._id,
+                message: "Please verify your email. A new OTP has been queued.",
+            };
+        }
+
+        return this.issueAuthTokens(user, request);
     }
 
-    /**
-     * Get logged-in user
-     */
-    async getMe(userId) {
-        return this.userRepository.findById(userId);
-    }
+    async googleLogin({ idToken, businessName }, request) {
+        if (!config.GOOGLE_CLIENT_ID) {
+            throw appError("Google login is not configured", 503);
+        }
 
-    /**
-     * Generate access token
-     */
-    generateAccessToken({ userId, username, email }) {
-        return jwt.sign(
-            { type: "access", id: userId, username, email },
-            config.JWT_ACCESS_SECRET,
-            { expiresIn: config.JWT_ACCESS_EXPIRY || CONSTANT.ACCESS_TOKEN_EXPIRATION }
-        );
-    }
+        const ticket = await googleClient.verifyIdToken({
+            idToken,
+            audience: config.GOOGLE_CLIENT_ID,
+        });
+        const payload = ticket.getPayload();
 
-    /**
-     * Generate refresh token (stateless)
-     */
-    generateRefreshToken({ userId }) {
-        return jwt.sign(
-            { type: "refresh", userId, id: userId },
-            config.JWT_REFRESH_SECRET,
-            { expiresIn: config.JWT_REFRESH_EXPIRY || CONSTANT.REFRESH_TOKEN_EXPIRATION }
-        );
-    }
+        if (!payload?.email || !payload.email_verified) {
+            throw appError("Google account email is not verified", 401);
+        }
 
-    /**
-     * Verify refresh token (stateless)
-     */
-    verifyRefreshToken(refreshToken) {
-        try {
-            const decoded = jwt.verify(refreshToken, config.JWT_REFRESH_SECRET);
-            if (decoded.type !== "refresh") {
-                throw appError("Invalid refresh token", 401);
-            }
-            return decoded;
-        } catch (error) {
-            logger.warn("Refresh token verification failed", {
-                error: error.message,
+        const email = normalizeEmail(payload.email);
+        const existing = await this.userRepo.findByEmail(email);
+
+        let user;
+        if (existing) {
+            const setFields = { isEmailVerified: true };
+            if (payload.picture) setFields.avatarUrl = payload.picture;
+            if (!existing.googleId) setFields.googleId = payload.sub;
+
+            user = await this.userRepo.updateById(existing._id, {
+                $set: setFields,
+                $addToSet: { authProviders: AUTH_PROVIDERS.GOOGLE },
             });
+        } else {
+            const created = await this.userRepo.create({
+                name: payload.name || email.split("@")[0],
+                email,
+                googleId: payload.sub,
+                avatarUrl: payload.picture || "",
+                role: ROLES.CUSTOMER,
+                authProviders: [AUTH_PROVIDERS.GOOGLE],
+                isEmailVerified: true,
+            });
+            user = created.toObject();
+        }
+
+        if (businessName && !user.businessId) {
+            user = await this.createBusinessForUser(user._id, { businessName });
+        }
+
+        return this.issueAuthTokens(user, request);
+    }
+
+    async refreshAccessToken(refreshToken, request) {
+        if (!refreshToken) {
+            throw appError("Refresh token is required", 401);
+        }
+
+        const decoded = verifyRefreshToken(refreshToken);
+        const session = await this.sessionRepo.findByUserAndSessionWithHash(
+            decoded.userId,
+            decoded.sessionId
+        );
+
+        if (!session) {
             throw appError("Invalid or expired refresh token", 401);
         }
-    }
 
-    /**
-     * Reset password
-     */
-    async resetPassword(userId, newPassword) {
-        const user = await this.userRepository.findById(userId);
-        if (!user) throw appError("User not found", 404);
+        const tokenMatches = await bcrypt.compare(refreshToken, session.refreshTokenHash);
 
-        user.password = await hashPassword(newPassword);
-        await user.save(); // triggers hashing
-        return true;
-    }
-
-    /**
-     * Update user profile
-     */
-    async updateProfile(userId, updates) {
-        if (updates.password) {
-            throw appError("Password update not allowed here", 400);
+        if (!tokenMatches) {
+            await this.sessionRepo.deleteById(session._id);
+            throw appError("Refresh token reuse detected", 401);
         }
 
-        return this.userRepository.updateById(userId, updates);
+        const user = await this.userRepo.findById(decoded.userId);
+        if (!user || !user.isActive) {
+            await this.sessionRepo.deleteById(session._id);
+            throw appError("Account is inactive", 401);
+        }
+
+        await this.sessionRepo.deleteById(session._id);
+        const { refreshToken: newRefreshToken } = await this.createRefreshSession(user._id, request);
+        const accessToken = generateAccessToken(user);
+
+        return {
+            accessToken,
+            refreshToken: newRefreshToken,
+            user: toSafeUser(user),
+        };
     }
 
-    /**
-     * Generate email verification token
-     */
-    async generateVerificationToken(email) {
-        const user = await this.userRepository.findByEmail(email);
-        if (!user) throw appError("User not found", 404);
+    async verifyOtp({ userId, otp, purpose = OTP_PURPOSES.EMAIL_VERIFICATION }, request) {
+        const otpDoc = await this.otpRepo.findLatestUnusedWithHash(userId, purpose);
 
-        const token = jwt.sign(
-            { id: user._id },
-            config.JWT_ACCESS_SECRET,
-            { expiresIn: CONSTANT.VERIFICATION_TOKEN_EXPIRATION }
-        );
+        if (!otpDoc || otpDoc.expiresAt < new Date()) {
+            throw appError("OTP expired or not found", 400);
+        }
 
-        user.emailVerificationToken = token;
-        await user.save();
+        const otpMatches = await bcrypt.compare(otp, otpDoc.otpHash);
+        if (!otpMatches) {
+            throw appError("Invalid OTP", 400);
+        }
 
-        return token;
+        await this.otpRepo.markUsedById(otpDoc._id);
+
+        if (purpose === OTP_PURPOSES.EMAIL_VERIFICATION) {
+            const user = await this.userRepo.updateById(userId, { isEmailVerified: true });
+            return this.issueAuthTokens(user, request);
+        }
+
+        return { message: "OTP verified" };
     }
 
-    /**
-     * Verify email
-     */
-    async verifyEmail(token) {
-        try {
-            const decoded = jwt.verify(token, config.JWT_ACCESS_SECRET);
-            const user = await this.userRepository.findByIdWithEmailVerificationToken(decoded.id);
+    async resendOtp(userId) {
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            throw appError("User not found", 404);
+        }
 
-            if (!user || user.emailVerificationToken !== token) {
-                throw appError("Invalid verification token", 401);
+        await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
+        return { message: "New verification OTP queued" };
+    }
+
+    async forgotPassword(email) {
+        const user = await this.userRepo.findByEmail(normalizeEmail(email));
+
+        if (user) {
+            await this.createAndQueueOtp(user, OTP_PURPOSES.PASSWORD_RESET);
+        }
+
+        return { message: "If this email exists, a reset OTP has been queued" };
+    }
+
+    async resetPassword({ userId, otp, newPassword }) {
+        await this.verifyOtp({
+            userId,
+            otp,
+            purpose: OTP_PURPOSES.PASSWORD_RESET,
+        });
+
+        const passwordHash = await bcrypt.hash(newPassword, PASSWORD_SALT_ROUNDS);
+        await this.userRepo.updateById(userId, {
+            passwordHash,
+            $addToSet: { authProviders: AUTH_PROVIDERS.PASSWORD },
+        });
+        await this.sessionRepo.deleteAllForUser(userId);
+
+        return { message: "Password reset successful. Please log in again." };
+    }
+
+    async logout(refreshToken) {
+        if (refreshToken) {
+            try {
+                const decoded = verifyRefreshToken(refreshToken);
+                await this.sessionRepo.deleteByUserAndSession(
+                    decoded.userId,
+                    decoded.sessionId
+                );
+            } catch {
+                // Logout should still clear the browser cookie for invalid tokens.
             }
-
-            user.isEmailVerified = true;
-            user.emailVerificationToken = undefined;
-            await user.save();
-
-            return user;
-        } catch (error) {
-            logger.warn("Email verification failed", {
-                error: error.message,
-            });
-            throw appError("Invalid or expired verification token", 401);
         }
+
+        return { message: "Logged out successfully" };
+    }
+
+    async logoutAll(userId) {
+        await this.sessionRepo.deleteAllForUser(userId);
+        return { message: "Logged out from all devices" };
+    }
+
+    async getMe(userId) {
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            throw appError("User not found", 404);
+        }
+        return user;
+    }
+
+    async createBusinessForUser(userId, { name, businessName, industry = "", description = "" }) {
+        const user = await this.userRepo.findById(userId);
+        if (!user) {
+            throw appError("User not found", 404);
+        }
+
+        if (user.businessId) {
+            throw appError("User already belongs to a business", 400);
+        }
+
+        const business = await this.businessRepo.create({
+            name: name || businessName,
+            industry,
+            description,
+            ownerId: user._id,
+        });
+
+        return this.userRepo.updateById(userId, {
+            businessId: business._id,
+            role: ROLES.ADMIN,
+        });
+    }
+
+    async createAndQueueOtp(user, purpose) {
+        await this.otpRepo.markPreviousAsUsed(user._id, purpose);
+
+        const otp = generateOtp();
+        const otpHash = await bcrypt.hash(otp, TOKEN_HASH_ROUNDS);
+
+        await this.otpRepo.create({
+            userId: user._id,
+            otpHash,
+            purpose,
+            expiresAt: getOtpExpiresAt(),
+        });
+
+        await enqueueOtpEmail({
+            to: user.email,
+            otp,
+            purpose,
+        });
+    }
+
+    async createRefreshSession(userId, request = {}) {
+        const { token, sessionId } = generateRefreshToken(userId);
+        const refreshTokenHash = await bcrypt.hash(token, TOKEN_HASH_ROUNDS);
+
+        await this.sessionRepo.create({
+            userId,
+            sessionId,
+            refreshTokenHash,
+            userAgent: request.get?.("user-agent") || request.headers?.["user-agent"] || "",
+            ipAddress: request.ip || "",
+            expiresAt: getRefreshTokenExpiresAt(),
+        });
+
+        return {
+            refreshToken: token,
+            sessionId,
+        };
+    }
+
+    async issueAuthTokens(user, request) {
+        const accessToken = generateAccessToken(user);
+        const { refreshToken } = await this.createRefreshSession(user._id, request);
+
+        return {
+            accessToken,
+            refreshToken,
+            user: toSafeUser(user),
+        };
     }
 }
 

@@ -1,56 +1,58 @@
 import mongoose from "mongoose";
 
 const businessSchema = new mongoose.Schema(
-  {
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-      maxlength: 100,
+    {
+        name: {
+            type: String,
+            required: true,
+            trim: true,
+            maxlength: 100,
+        },
+        industry: {
+            type: String,
+            default: "",
+            trim: true,
+        },
+        description: {
+            type: String,
+            default: "",
+            trim: true,
+            maxlength: 500,
+        },
+        ownerId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "User",
+            required: true,
+            unique: true,
+            index: true,
+        },
+        settings: {
+            type: Object,
+            default: {
+                chatWidgetEnabled: true,
+                autoReplyEnabled: false,
+            },
+        },
+        plan: {
+            type: String,
+            enum: ["free", "pro"],
+            default: "free",
+        },
+        isActive: {
+            type: Boolean,
+            default: true,
+            index: true,
+        },
+        suspensionReason: {
+            type: String,
+            default: "",
+            trim: true,
+        },
     },
-    ownerId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    plan: {
-      type: String,
-      enum: ["free", "pro", "enterprise"],
-      default: "free",
-    },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    activeAIModel: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "AIModel",
-      default: null,
-    },
-    usage: {
-      aiCalls: {
-        type: Number,
-        default: 0,
-      },
-      tokensConsumed: {
-        type: Number,
-        default: 0,
-      },
-      costEstimate: {
-        type: Number,
-        default: 0,
-      },
-    },
-  },
-  {
-    timestamps: true,
-  }
+    { timestamps: true }
 );
 
-businessSchema.index({ ownerId: 1 });
-businessSchema.index({ isActive: 1, plan: 1 });
-businessSchema.index({ activeAIModel: 1 });
-businessSchema.index({ createdAt: -1 });
+businessSchema.index({ isActive: 1, createdAt: -1 });
 
 const Business = mongoose.model("Business", businessSchema);
 

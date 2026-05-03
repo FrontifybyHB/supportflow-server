@@ -1,16 +1,22 @@
-import { body, query } from 'express-validator';
+import { body, param } from 'express-validator';
+
 import { customValidators } from '../middlewares/validator.middleware.js';
 
+const passwordRule = (field = 'password') => body(field)
+    .notEmpty()
+    .withMessage(`${field} is required`)
+    .isLength({ min: 8 })
+    .withMessage(`${field} must be at least 8 characters`)
+    .custom((value) => {
+        if (!customValidators.strongPassword(value)) {
+            throw new Error(
+                `${field} must contain at least one uppercase letter, one lowercase letter, and one number`
+            );
+        }
+        return true;
+    });
+
 export const registerValidator = [
-    body('username')
-        .notEmpty()
-        .withMessage('Username is required')
-        .isLength({ min: 3, max: 30 })
-        .withMessage('Username must be between 3 and 30 characters')
-        .matches(/^[a-zA-Z0-9_]+$/)
-        .withMessage('Username can only contain letters, numbers, and underscores')
-        .trim()
-        .escape(),
     body('name')
         .notEmpty()
         .withMessage('Name is required')
@@ -23,26 +29,7 @@ export const registerValidator = [
         .isEmail()
         .withMessage('Please provide a valid email')
         .normalizeEmail(),
-    body('password')
-        .notEmpty()
-        .withMessage('Password is required')
-        .isLength({ min: 8 })
-        .withMessage('Password must be at least 8 characters')
-        .custom((value) => {
-            if (!customValidators.strongPassword(value)) {
-                throw new Error(
-                    'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
-                );
-            }
-            return true;
-        }),
-    body('role')
-        .custom((value, { req }) => {
-            if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
-                throw new Error('Role cannot be set during registration');
-            }
-            return true;
-        }),
+    passwordRule('password'),
 ];
 
 export const loginValidator = [
@@ -52,24 +39,29 @@ export const loginValidator = [
         .isEmail()
         .withMessage('Please provide a valid email')
         .normalizeEmail(),
-    body('password')
-        .notEmpty()
-        .withMessage('Password is required')
-        .isLength({ min: 8 })
-        .withMessage('Password must be at least 8 characters'),
+    body('password').notEmpty().withMessage('Password is required'),
 ];
 
-export const verifyEmailValidator = [
-    body('email')
-        .notEmpty()
-        .withMessage('Email is required')
-        .isEmail()
-        .withMessage('Please provide a valid email')
-        .normalizeEmail(),
+export const googleLoginValidator = [
+    body('idToken').notEmpty().withMessage('Google idToken is required'),
+    body('businessName')
+        .optional()
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Business name must be between 2 and 100 characters')
+        .trim(),
 ];
 
-export const verifyEmailTokenValidator = [
-    query('token').notEmpty().withMessage('Token is required'),
+export const verifyOtpValidator = [
+    body('userId').isMongoId().withMessage('Valid userId is required'),
+    body('otp')
+        .isLength({ min: 6, max: 6 })
+        .withMessage('OTP must be 6 digits')
+        .isNumeric()
+        .withMessage('OTP must be numeric'),
+];
+
+export const resendOtpValidator = [
+    body('userId').isMongoId().withMessage('Valid userId is required'),
 ];
 
 export const forgotPasswordValidator = [
@@ -92,9 +84,13 @@ export const resetPasswordValidator = [
 ];
 
 export const createBusinessValidator = [
+    body('name')
+        .optional()
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Business name must be between 2 and 100 characters')
+        .trim(),
     body('businessName')
-        .notEmpty()
-        .withMessage('Business name is required')
+        .optional()
         .isLength({ min: 2, max: 100 })
         .withMessage('Business name must be between 2 and 100 characters')
         .trim(),
@@ -103,6 +99,48 @@ export const createBusinessValidator = [
         .isLength({ max: 80 })
         .withMessage('Industry must be 80 characters or fewer')
         .trim(),
+    body('description')
+        .optional()
+        .isLength({ max: 500 })
+        .withMessage('Description must be 500 characters or fewer')
+        .trim(),
+    body()
+        .custom((value) => {
+            if (!value.name && !value.businessName) {
+                throw new Error('Business name is required');
+            }
+            return true;
+        }),
+];
+
+export const updateBusinessValidator = [
+    body('name')
+        .optional()
+        .isLength({ min: 2, max: 100 })
+        .withMessage('Business name must be between 2 and 100 characters')
+        .trim(),
+    body('industry')
+        .optional()
+        .isLength({ max: 80 })
+        .withMessage('Industry must be 80 characters or fewer')
+        .trim(),
+    body('description')
+        .optional()
+        .isLength({ max: 500 })
+        .withMessage('Description must be 500 characters or fewer')
+        .trim(),
+    body('settings')
+        .optional()
+        .isObject()
+        .withMessage('Settings must be an object'),
+    body('settings.chatWidgetEnabled')
+        .optional()
+        .isBoolean()
+        .withMessage('chatWidgetEnabled must be boolean'),
+    body('settings.autoReplyEnabled')
+        .optional()
+        .isBoolean()
+        .withMessage('autoReplyEnabled must be boolean'),
 ];
 
 export const createAgentValidator = [
@@ -160,30 +198,21 @@ export const updateUserRoleValidator = [
         .withMessage('Valid businessId is required'),
 ];
 
-export const bootstrapSuperAdminValidator = [
-    body('name')
-        .notEmpty()
-        .withMessage('Name is required')
-        .isLength({ min: 2, max: 50 })
-        .withMessage('Name must be between 2 and 50 characters')
+export const businessStatusValidator = [
+    param('id').isMongoId().withMessage('Valid business id is required'),
+    body('isActive').isBoolean().withMessage('isActive must be boolean'),
+    body('reason')
+        .optional()
+        .isLength({ max: 300 })
+        .withMessage('Reason must be 300 characters or fewer')
         .trim(),
-    body('email')
-        .notEmpty()
-        .withMessage('Email is required')
-        .isEmail()
-        .withMessage('Please provide a valid email')
-        .normalizeEmail(),
-    body('password')
-        .notEmpty()
-        .withMessage('Password is required')
-        .isLength({ min: 8 })
-        .withMessage('Password must be at least 8 characters')
-        .custom((value) => {
-            if (!customValidators.strongPassword(value)) {
-                throw new Error('Password must contain at least one uppercase letter, one lowercase letter, and one number');
-            }
-            return true;
-        }),
+];
+
+export const businessPlanValidator = [
+    param('id').isMongoId().withMessage('Valid business id is required'),
+    body('plan')
+        .isIn(['free', 'pro'])
+        .withMessage('Plan must be either free or pro'),
 ];
 
 export const bootstrapSuperAdminValidator = [

@@ -1,198 +1,231 @@
-import mongoose from "mongoose";
 import Business from "../models/business.model.js";
 import BusinessRepositoryContract from "../contracts/business.repository.contract.js";
+import cacheService from "../services/cache.service.js";
+
+const BUSINESS_CACHE_TTL = 60;
+const businessCacheKeys = (id) => ({
+    full: `business:byId:${id}`,
+    status: `business:status:${id}`,
+    active: `business:active:${id}`,
+});
 
 class BusinessRepository extends BusinessRepositoryContract {
-  constructor(model = Business) {
-    super();
-    this.model = model;
-  }
-
-  async findAll(filters = {}) {
-    return this.model
-      .find(filters)
-      .select("name ownerId plan isActive usage createdAt updatedAt")
-      .sort({ createdAt: -1 })
-      .lean();
-  }
-
-  async findById(id) {
-    return this.model
-      .findById(id)
-      .select("name ownerId plan isActive activeAIModel usage createdAt updatedAt")
-      .lean();
-  }
-
-  async updateStatus(id, isActive) {
-    return this.model.findByIdAndUpdate(
-      id,
-      { isActive },
-      { returnDocument: "after", runValidators: true }
-    )
-      .select("name ownerId plan isActive usage createdAt updatedAt")
-      .lean();
-  }
-
-  async updatePlan(id, plan) {
-    return this.model.findByIdAndUpdate(
-      id,
-      { plan },
-      { returnDocument: "after", runValidators: true }
-    )
-      .select("name ownerId plan isActive usage createdAt updatedAt")
-      .lean();
-  }
-
-  async incrementUsage(id, usage) {
-    return this.model.findByIdAndUpdate(
-      id,
-      {
-        $inc: {
-          "usage.aiCalls": usage.aiCalls || 0,
-          "usage.tokensConsumed": usage.tokensConsumed || 0,
-          "usage.costEstimate": usage.costEstimate || 0,
-        },
-      },
-      { returnDocument: "after", runValidators: true }
-    )
-      .select("name ownerId plan isActive usage createdAt updatedAt")
-      .lean();
-  }
-
-  async getAggregatedStats() {
-    const [stats] = await this.model.aggregate([
-      {
-        $group: {
-          _id: null,
-          totalBusinesses: { $sum: 1 },
-          activeBusinesses: {
-            $sum: { $cond: ["$isActive", 1, 0] },
-          },
-          suspendedBusinesses: {
-            $sum: { $cond: ["$isActive", 0, 1] },
-          },
-          totalAiCalls: { $sum: "$usage.aiCalls" },
-          totalTokensConsumed: { $sum: "$usage.tokensConsumed" },
-          totalCostEstimate: { $sum: "$usage.costEstimate" },
-        },
-      },
-    ]);
-
-    return (
-      stats || {
-        totalBusinesses: 0,
-        activeBusinesses: 0,
-        suspendedBusinesses: 0,
-        totalAiCalls: 0,
-        totalTokensConsumed: 0,
-        totalCostEstimate: 0,
-      }
-    );
-  }
-
-  async getUsageByPlan() {
-    return this.model.aggregate([
-      {
-        $group: {
-          _id: "$plan",
-          businesses: { $sum: 1 },
-          aiCalls: { $sum: "$usage.aiCalls" },
-          tokensConsumed: { $sum: "$usage.tokensConsumed" },
-          costEstimate: { $sum: "$usage.costEstimate" },
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          plan: "$_id",
-          businesses: 1,
-          aiCalls: 1,
-          tokensConsumed: 1,
-          costEstimate: 1,
-        },
-      },
-    ]);
-  }
-
-  async getBusinessKnowledge(businessId, message = "", limit = 3) {
-    const db = mongoose.connection.db;
-    if (!db) return [];
-
-    const keywords = this.extractKeywords(message);
-    const businessStringId = String(businessId);
-    const businessIds = [businessStringId];
-    if (this.isValidId(businessStringId)) {
-      businessIds.push(new mongoose.Types.ObjectId(businessStringId));
+    constructor(model = Business, cache = cacheService) {
+        super();
+        this.model = model;
+        this.cache = cache;
     }
-    const query = {
-      businessId: { $in: businessIds },
-      isActive: { $ne: false },
-    };
 
-    const entries = await db
-      .collection("knowledgebases")
-      .find(query)
-      .project({ title: 1, content: 1, answer: 1, body: 1, tags: 1, updatedAt: 1 })
-      .limit(25)
-      .toArray();
+    async create(data) {
+        return this.model.create(data);
+    }
 
-    return entries
-      .map((entry) => ({
-        ...entry,
-        relevanceScore: this.scoreKnowledgeEntry(entry, keywords),
-      }))
-      .sort((a, b) => b.relevanceScore - a.relevanceScore)
-      .slice(0, limit);
-  }
+    async findById(id) {
+        if (!id) return null;
+        return this.cache.wrap(
+            businessCacheKeys(id).full,
+            BUSINESS_CACHE_TTL,
+            () => this.model.findById(id).lean()
+        );
+    }
 
-  extractKeywords(message = "") {
-    const stopWords = new Set([
-      "the",
-      "and",
-      "for",
-      "with",
-      "you",
-      "your",
-      "are",
-      "what",
-      "how",
-      "can",
-      "that",
-      "this",
-      "from",
-      "have",
-      "need",
-    ]);
+    async findByIdWithOwner(id) {
+        if (!id) return null;
+        return this.model
+            .findById(id)
+            .populate("ownerId", "name email")
+            .lean();
+    }
 
-    return String(message)
-      .toLowerCase()
-      .match(/[a-z0-9]+/g)
-      ?.filter((word) => word.length > 2 && !stopWords.has(word))
-      .slice(0, 12) || [];
-  }
+    async findActiveStatusById(id) {
+        if (!id) return null;
+        return this.cache.wrap(
+            businessCacheKeys(id).status,
+            BUSINESS_CACHE_TTL,
+            () => this.model.findById(id).select("isActive").lean()
+        );
+    }
 
-  scoreKnowledgeEntry(entry, keywords) {
-    if (!keywords.length) return 0;
+    async findActiveById(id) {
+        if (!id) return null;
+        return this.cache.wrap(
+            businessCacheKeys(id).active,
+            BUSINESS_CACHE_TTL,
+            () => this.model.findOne({ _id: id, isActive: true }).lean()
+        );
+    }
 
-    const searchableText = [
-      entry.title,
-      entry.content,
-      entry.answer,
-      entry.body,
-      Array.isArray(entry.tags) ? entry.tags.join(" ") : "",
-    ]
-      .filter(Boolean)
-      .join(" ")
-      .toLowerCase();
+    async invalidateById(id) {
+        if (!id) return;
+        const keys = businessCacheKeys(id);
+        await this.cache.delMany([keys.full, keys.status, keys.active]);
+    }
 
-    return keywords.reduce((score, keyword) => {
-      return searchableText.includes(keyword) ? score + 1 : score;
-    }, 0);
-  }
+    async listAllWithOwner() {
+        return this.model.aggregate([
+            { $match: {} },
+            { $sort: { createdAt: -1 } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "ownerId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, email: 1, role: 1 } }],
+                    as: "owner",
+                },
+            },
+            {
+                $addFields: {
+                    ownerId: { $arrayElemAt: ["$owner", 0] },
+                },
+            },
+            { $project: { owner: 0 } },
+        ]);
+    }
 
-  isValidId(id) {
-    return mongoose.Types.ObjectId.isValid(id);
-  }
+    /**
+     * Single-pipeline aggregation that joins owner info and the agent headcount.
+     * Replaces N+1 (1 list + N counts) with a single round-trip.
+     * @param {string} agentRole
+     */
+    async listAllWithOwnerAndAgentCount(agentRole) {
+        return this.model.aggregate([
+            { $match: {} },
+            { $sort: { createdAt: -1 } },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "ownerId",
+                    foreignField: "_id",
+                    pipeline: [{ $project: { name: 1, email: 1, role: 1 } }],
+                    as: "owner",
+                },
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    let: { bid: "$_id" },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: {
+                                    $and: [
+                                        { $eq: ["$businessId", "$$bid"] },
+                                        { $eq: ["$role", agentRole] },
+                                    ],
+                                },
+                            },
+                        },
+                        { $count: "total" },
+                    ],
+                    as: "agentStats",
+                },
+            },
+            {
+                $addFields: {
+                    ownerId: { $arrayElemAt: ["$owner", 0] },
+                    agentCount: {
+                        $ifNull: [{ $arrayElemAt: ["$agentStats.total", 0] }, 0],
+                    },
+                },
+            },
+            { $project: { owner: 0, agentStats: 0 } },
+        ]);
+    }
+
+    async setActive(id, isActive) {
+        const updated = await this.model
+            .findByIdAndUpdate(
+                id,
+                { $set: { isActive } },
+                { returnDocument: "after", runValidators: true }
+            )
+            .lean();
+        if (updated) await this.invalidateById(id);
+        return updated;
+    }
+
+    async updateById(id, updates) {
+        const updated = await this.model
+            .findByIdAndUpdate(
+                id,
+                { $set: updates },
+                { returnDocument: "after", runValidators: true }
+            )
+            .lean();
+        if (updated) await this.invalidateById(id);
+        return updated;
+    }
+
+    async updateStatus(id, { isActive, reason = "" }) {
+        const updated = await this.model
+            .findByIdAndUpdate(
+                id,
+                {
+                    $set: {
+                        isActive,
+                        suspensionReason: isActive ? "" : reason,
+                    },
+                },
+                { returnDocument: "after", runValidators: true }
+            )
+            .lean();
+        if (updated) await this.invalidateById(id);
+        return updated;
+    }
+
+    async updatePlan(id, plan) {
+        const updated = await this.model
+            .findByIdAndUpdate(
+                id,
+                { $set: { plan } },
+                { returnDocument: "after", runValidators: true }
+            )
+            .lean();
+        if (updated) await this.invalidateById(id);
+        return updated;
+    }
+
+    /**
+     * Atomic flip of the isActive flag using an aggregation-pipeline update.
+     * Eliminates the read-then-write round-trip.
+     */
+    async toggleActive(id) {
+        const updated = await this.model
+            .findByIdAndUpdate(
+                id,
+                [{ $set: { isActive: { $not: "$isActive" } } }],
+                { returnDocument: "after", runValidators: true }
+            )
+            .lean();
+        if (updated) await this.invalidateById(id);
+        return updated;
+    }
+
+    async count(filter = {}) {
+        return this.model.countDocuments(filter);
+    }
+
+    /**
+     * Returns total + active business counts in a single round-trip via $facet.
+     * @returns {Promise<{total:number, active:number}>}
+     */
+    async statsCounts() {
+        const [result] = await this.model.aggregate([
+            {
+                $facet: {
+                    total: [{ $count: "value" }],
+                    active: [{ $match: { isActive: true } }, { $count: "value" }],
+                },
+            },
+        ]);
+
+        return {
+            total: result?.total?.[0]?.value ?? 0,
+            active: result?.active?.[0]?.value ?? 0,
+        };
+    }
 }
 
-export default BusinessRepository;
+export { BusinessRepository };
+export default new BusinessRepository();

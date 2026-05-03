@@ -4,14 +4,17 @@ import logger from "../loggers/winston.logger.js";
 import Ticket from "../models/ticket.model.js";
 import BusinessRepository from "../repositories/business.repository.js";
 import AIModelRepository from "../repositories/aiModel.repository.js";
+import aiClassificationService from "./aiClassification.service.js";
 
 class SuperAdminService {
   constructor(
     businessRepository = new BusinessRepository(),
-    aiModelRepository = new AIModelRepository()
+    aiModelRepository = new AIModelRepository(),
+    classificationService = aiClassificationService
   ) {
     this.businessRepository = businessRepository;
     this.aiModelRepository = aiModelRepository;
+    this.classificationService = classificationService;
   }
 
   async getPlatformStats() {
@@ -159,6 +162,7 @@ class SuperAdminService {
         isActive: true,
       });
       await this.aiModelRepository.setDefault(model._id);
+      this.classificationService.invalidateModelCache();
       logger.info(`AI model created and set as default: ${model._id}`);
       return this.aiModelRepository.findById(model._id);
     }
@@ -175,6 +179,7 @@ class SuperAdminService {
 
     const model = await this.aiModelRepository.update(id, updates);
     if (!model) throw appError("AI model not found", 404);
+    this.classificationService.invalidateModelCache();
     logger.info(`AI model updated: ${id}`);
     return model;
   }
@@ -184,6 +189,7 @@ class SuperAdminService {
     if (!existingModel) throw appError("AI model not found", 404);
 
     const model = await this.aiModelRepository.setDefault(id);
+    this.classificationService.invalidateModelCache();
     logger.info(`Default AI model changed: ${id}`);
     return model;
   }
@@ -194,6 +200,7 @@ class SuperAdminService {
     if (model.isDefault) throw appError("Default AI model cannot be deleted", 400);
 
     await this.aiModelRepository.delete(id);
+    this.classificationService.invalidateModelCache();
     logger.info(`AI model deleted: ${id}`);
     return true;
   }

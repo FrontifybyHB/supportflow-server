@@ -1,10 +1,15 @@
 import appError from "../utils/appError.js";
 import logger from "../loggers/winston.logger.js";
 import BusinessAIRepository from "../repositories/businessAi.repository.js";
+import aiClassificationService from "./aiClassification.service.js";
 
 class BusinessAIService {
-  constructor(repository = new BusinessAIRepository()) {
+  constructor(
+    repository = new BusinessAIRepository(),
+    classificationService = aiClassificationService
+  ) {
     this.repository = repository;
+    this.classificationService = classificationService;
   }
 
   async listAvailableModels() {
@@ -46,6 +51,7 @@ class BusinessAIService {
       businessId,
       modelId
     );
+    this.classificationService.invalidateModelCache(businessId);
 
     logger.info(`Business AI model selected: ${businessId} -> ${modelId}`);
 

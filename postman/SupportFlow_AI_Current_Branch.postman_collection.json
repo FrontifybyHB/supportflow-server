@@ -1,0 +1,4263 @@
+{
+  "info": {
+    "name": "SupportFlow AI - Current Branch Full API Test Suite",
+    "description": "Importable Postman v2.1 collection generated from the current server branch. Seeded superadmin/admin/agent credentials and businessId are required for tenant-protected routes because this branch does not expose public business or agent creation endpoints.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const now = Date.now();",
+          "",
+          "function readVar(key) {",
+          "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+          "}",
+          "",
+          "function writeVar(key, value) {",
+          "  pm.collectionVariables.set(key, value);",
+          "  try {",
+          "    pm.environment.set(key, value);",
+          "  } catch (error) {",
+          "    // Collection variables still make the collection runnable without an active environment.",
+          "  }",
+          "}",
+          "",
+          "function ensureVar(key, fallback) {",
+          "  const current = readVar(key);",
+          "  if (current === undefined || current === null || current === \"\") {",
+          "    writeVar(key, fallback);",
+          "  }",
+          "}",
+          "",
+          "ensureVar(\"BASE_URL\", \"http://localhost:3000\");",
+          "ensureVar(\"MAX_RESPONSE_MS\", \"2000\");",
+          "ensureVar(\"ordinaryUserEmail\", \"postman_user_\" + now + \"@supportflow.test\");",
+          "ensureVar(\"ordinaryUsername\", \"postman_user_\" + now);",
+          "ensureVar(\"ordinaryUserPassword\", \"Test@12345\");",
+          "ensureVar(\"wrongPassword\", \"Wrong@12345\");",
+          "ensureVar(\"chatCustomerEmail\", \"customer_\" + now + \"@example.com\");",
+          "ensureVar(\"RUN_OPTIONAL_MUTATION_TESTS\", \"false\");",
+          "ensureVar(\"superadminEmail\", \"\");",
+          "ensureVar(\"superadminPassword\", \"\");",
+          "ensureVar(\"adminEmail\", \"\");",
+          "ensureVar(\"adminPassword\", \"\");",
+          "ensureVar(\"agentEmail\", \"\");",
+          "ensureVar(\"agentPassword\", \"\");"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "let json = null;",
+          "try {",
+          "  json = pm.response.json();",
+          "} catch (error) {",
+          "  json = null;",
+          "}",
+          "",
+          "pm.test(\"Response time is within limit\", function () {",
+          "  const limit = Number(pm.environment.get(\"MAX_RESPONSE_MS\") || pm.collectionVariables.get(\"MAX_RESPONSE_MS\") || 2000);",
+          "  pm.expect(pm.response.responseTime).to.be.below(limit);",
+          "});",
+          "",
+          "pm.test(\"Response body is JSON\", function () {",
+          "  pm.expect(json, \"Expected a JSON response body\").to.not.equal(null);",
+          "});",
+          "",
+          "pm.test(\"Response uses SupportFlow envelope\", function () {",
+          "  pm.expect(json).to.have.property(\"success\");",
+          "  pm.expect(json).to.have.property(\"message\");",
+          "});",
+          "",
+          "pm.test(\"Sensitive fields are not leaked\", function () {",
+          "  const body = pm.response.text();",
+          "  pm.expect(body).to.not.include(\"passwordHash\");",
+          "  pm.expect(body).to.not.include('\"password\"');",
+          "  pm.expect(body).to.not.include(\"apiKey\");",
+          "});",
+          "",
+          "pm.test(\"No development stack trace leaked\", function () {",
+          "  pm.expect(pm.response.text()).to.not.include(\" at \");",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "MAX_RESPONSE_MS",
+      "value": "2000",
+      "type": "string"
+    },
+    {
+      "key": "RUN_OPTIONAL_MUTATION_TESTS",
+      "value": "false",
+      "type": "string"
+    },
+    {
+      "key": "superadminEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "superadminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentEmail",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentPassword",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "businessId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "agentId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "00 - Environment Setup",
+      "item": [
+        {
+          "name": "Auth Required - Missing Token Baseline",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/v1/auth/get-me"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 401\", function () {",
+                  "  pm.expect([401]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is false\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Chat Validation - Missing businessId Baseline",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/chat/message"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"I need help with my account\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 400\", function () {",
+                  "  pm.expect([400]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is false\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "description": "Before running tenant folders, set superadminEmail/superadminPassword, adminEmail/adminPassword, agentEmail/agentPassword, and businessId if your admin token does not include it."
+    },
+    {
+      "name": "01 - Auth",
+      "item": [
+        {
+          "name": "Happy Path",
+          "item": [
+            {
+              "name": "Register Ordinary User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/register"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{ordinaryUsername}}\",\n  \"name\": \"Postman Ordinary User\",\n  \"email\": \"{{ordinaryUserEmail}}\",\n  \"password\": \"{{ordinaryUserPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 201\", function () {",
+                      "  pm.expect([201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const json = bodyJson();",
+                      "if (json.success) {",
+                      "  writeVar(\"ordinaryUserToken\", json.accessToken);",
+                      "  writeVar(\"ordinaryUserRefreshToken\", json.refreshToken);",
+                      "  writeVar(\"ordinaryUserId\", json.data && json.data._id);",
+                      "  writeVar(\"ordinaryUserBusinessId\", json.data && json.data.businessId);",
+                      "}",
+                      "pm.test(\"access token returned\", function () {",
+                      "  pm.expect(json.accessToken).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "pm.test(\"user object returned without password\", function () {",
+                      "  pm.expect(json.data).to.be.an(\"object\");",
+                      "  pm.expect(JSON.stringify(json.data)).to.not.include(\"password\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login Ordinary User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{ordinaryUserEmail}}\",\n  \"password\": \"{{ordinaryUserPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const json = bodyJson();",
+                      "if (json.success) {",
+                      "  writeVar(\"ordinaryUserToken\", json.accessToken);",
+                      "  writeVar(\"ordinaryUserRefreshToken\", json.refreshToken);",
+                      "  writeVar(\"ordinaryUserId\", json.data && json.data._id);",
+                      "  writeVar(\"ordinaryUserBusinessId\", json.data && json.data.businessId);",
+                      "}",
+                      "pm.test(\"access token returned\", function () {",
+                      "  pm.expect(json.accessToken).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "pm.test(\"user object returned without password\", function () {",
+                      "  pm.expect(json.data).to.be.an(\"object\");",
+                      "  pm.expect(JSON.stringify(json.data)).to.not.include(\"password\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Current Ordinary User",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/get-me"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ordinaryUserToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"current user id matches ordinary user\", function () {",
+                      "  pm.expect(String(bodyJson().data._id)).to.eql(String(readVar(\"ordinaryUserId\")));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Refresh Access Token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/refresh-token"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refreshToken\": \"{{ordinaryUserRefreshToken}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const json = bodyJson();",
+                      "writeVar(\"ordinaryUserTokenRefreshed\", json.accessToken);",
+                      "pm.test(\"new access token returned\", function () {",
+                      "  pm.expect(json.accessToken).to.be.a(\"string\").and.not.empty;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Logout Ordinary User",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/logout"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{ordinaryUserToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Seeded Role Login",
+          "item": [
+            {
+              "name": "Login Superadmin",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{superadminEmail}}\",\n  \"password\": \"{{superadminPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const json = bodyJson();",
+                      "if (json.success) {",
+                      "  writeVar(\"superadminToken\", json.accessToken);",
+                      "  writeVar(\"superadminRefreshToken\", json.refreshToken);",
+                      "  writeVar(\"superadminId\", json.data && json.data._id);",
+                      "  writeVar(\"superadminBusinessId\", json.data && json.data.businessId);",
+                      "}",
+                      "pm.test(\"access token returned\", function () {",
+                      "  pm.expect(json.accessToken).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "pm.test(\"user object returned without password\", function () {",
+                      "  pm.expect(json.data).to.be.an(\"object\");",
+                      "  pm.expect(JSON.stringify(json.data)).to.not.include(\"password\");",
+                      "});",
+                      "",
+                      "pm.test(\"superadmin role returned\", function () {",
+                      "  pm.expect(bodyJson().data.role).to.eql(\"superadmin\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login Admin",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{adminEmail}}\",\n  \"password\": \"{{adminPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const json = bodyJson();",
+                      "if (json.success) {",
+                      "  writeVar(\"adminToken\", json.accessToken);",
+                      "  writeVar(\"adminRefreshToken\", json.refreshToken);",
+                      "  writeVar(\"adminId\", json.data && json.data._id);",
+                      "  writeVar(\"businessId\", json.data && json.data.businessId);",
+                      "}",
+                      "pm.test(\"access token returned\", function () {",
+                      "  pm.expect(json.accessToken).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "pm.test(\"user object returned without password\", function () {",
+                      "  pm.expect(json.data).to.be.an(\"object\");",
+                      "  pm.expect(JSON.stringify(json.data)).to.not.include(\"password\");",
+                      "});",
+                      "",
+                      "pm.test(\"admin role returned\", function () {",
+                      "  pm.expect(bodyJson().data.role).to.eql(\"admin\");",
+                      "});",
+                      "pm.test(\"admin has business context\", function () {",
+                      "  pm.expect(readVar(\"businessId\")).to.be.a(\"string\").and.not.empty;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Login Agent",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{agentEmail}}\",\n  \"password\": \"{{agentPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const json = bodyJson();",
+                      "if (json.success) {",
+                      "  writeVar(\"agentToken\", json.accessToken);",
+                      "  writeVar(\"agentRefreshToken\", json.refreshToken);",
+                      "  writeVar(\"agentId\", json.data && json.data._id);",
+                      "  writeVar(\"agentBusinessId\", json.data && json.data.businessId);",
+                      "}",
+                      "pm.test(\"access token returned\", function () {",
+                      "  pm.expect(json.accessToken).to.be.a(\"string\").and.not.empty;",
+                      "});",
+                      "pm.test(\"user object returned without password\", function () {",
+                      "  pm.expect(json.data).to.be.an(\"object\");",
+                      "  pm.expect(JSON.stringify(json.data)).to.not.include(\"password\");",
+                      "});",
+                      "",
+                      "pm.test(\"agent role returned\", function () {",
+                      "  pm.expect(bodyJson().data.role).to.eql(\"agent\");",
+                      "});",
+                      "pm.test(\"agent belongs to active business\", function () {",
+                      "  pm.expect(bodyJson().data.businessId).to.be.a(\"string\").and.not.empty;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Negative Tests",
+          "item": [
+            {
+              "name": "Wrong Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/login"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{ordinaryUserEmail}}\",\n  \"password\": \"{{wrongPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 401\", function () {",
+                      "  pm.expect([401]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Duplicate Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/register"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{ordinaryUsername}}_dup\",\n  \"name\": \"Duplicate User\",\n  \"email\": \"{{ordinaryUserEmail}}\",\n  \"password\": \"{{ordinaryUserPassword}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 400\", function () {",
+                      "  pm.expect([400]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Role Cannot Be Set During Registration",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/register"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"role_attempt_{{$timestamp}}\",\n  \"name\": \"Role Attempt\",\n  \"email\": \"role_attempt_{{$timestamp}}@supportflow.test\",\n  \"password\": \"{{ordinaryUserPassword}}\",\n  \"role\": \"admin\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 400\", function () {",
+                      "  pm.expect([400]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Refresh Token Missing",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/refresh-token"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 401\", function () {",
+                      "  pm.expect([401]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verify Email Missing Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/verify-email"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 400\", function () {",
+                      "  pm.expect([400]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Verify Email Invalid Token",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/v1/auth/verify-email?token=invalid-token"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 401\", function () {",
+                      "  pm.expect([401]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Superadmin Platform",
+      "item": [
+        {
+          "name": "Read APIs",
+          "item": [
+            {
+              "name": "Get Platform Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/stats"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"stats contain platform counters\", function () {",
+                      "  const data = bodyJson().data;",
+                      "  pm.expect(data).to.have.property(\"totalBusinesses\");",
+                      "  pm.expect(data).to.have.property(\"totalUsers\");",
+                      "  pm.expect(data).to.have.property(\"totalTickets\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Usage Stats",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/usage"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"usage contains AI counters\", function () {",
+                      "  const data = bodyJson().data;",
+                      "  pm.expect(data).to.have.property(\"aiApiCalls\");",
+                      "  pm.expect(data).to.have.property(\"tokensConsumed\");",
+                      "  pm.expect(data).to.have.property(\"usageByPlan\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Businesses",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/businesses"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const businesses = bodyJson().data || [];",
+                      "if (!readVar(\"businessId\") && businesses.length) {",
+                      "  const active = businesses.find((business) => business.isActive !== false) || businesses[0];",
+                      "  writeVar(\"businessId\", active._id);",
+                      "}",
+                      "pm.test(\"businesses response is an array\", function () {",
+                      "  pm.expect(businesses).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Business By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"business id matches variable\", function () {",
+                      "  pm.expect(String(bodyJson().data._id)).to.eql(String(readVar(\"businessId\")));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Users",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/users"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const users = bodyJson().data || [];",
+                      "const agent = users.find((user) => user.email === readVar(\"agentEmail\"));",
+                      "const admin = users.find((user) => user.email === readVar(\"adminEmail\"));",
+                      "writeVar(\"agentId\", agent && agent._id);",
+                      "writeVar(\"adminId\", admin && admin._id);",
+                      "pm.test(\"users response is an array\", function () {",
+                      "  pm.expect(users).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Admin User By ID",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/users/{{adminId}}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Business Mutations - Opt In",
+          "item": [
+            {
+              "name": "Suspend Business",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/suspend"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                      "if (!shouldRun) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"business is suspended\", function () {",
+                      "  pm.expect(bodyJson().data.isActive).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Activate Business",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/activate"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                      "if (!shouldRun) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"business is active\", function () {",
+                      "  pm.expect(bodyJson().data.isActive).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Change Business Plan",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/businesses/{{businessId}}/plan"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"plan\": \"pro\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                      "if (!shouldRun) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"plan changed to pro\", function () {",
+                      "  pm.expect(bodyJson().data.plan).to.eql(\"pro\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "User Mutations - Opt In",
+          "item": [
+            {
+              "name": "Deactivate Agent User",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/users/{{agentId}}/deactivate"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                      "if (!shouldRun) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"agent is inactive\", function () {",
+                      "  pm.expect(bodyJson().data.isActive).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Reactivate Agent User",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/users/{{agentId}}/reactivate"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                      "if (!shouldRun) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"agent is active\", function () {",
+                      "  pm.expect(bodyJson().data.isActive).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "AI Model Management",
+          "item": [
+            {
+              "name": "List AI Models",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/models"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"models response is an array\", function () {",
+                      "  pm.expect(bodyJson().data).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Create AI Model",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/models"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Postman Custom Model {{$timestamp}}\",\n  \"provider\": \"custom\",\n  \"description\": \"Temporary model created by Postman collection\",\n  \"apiKey\": \"postman-test-key\",\n  \"endpoint\": \"http://127.0.0.1:9/mock-ai\",\n  \"isActive\": true,\n  \"isDefault\": false,\n  \"config\": {\n    \"maxTokens\": 256,\n    \"temperature\": 0.2\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 201\", function () {",
+                      "  pm.expect([201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const model = bodyJson().data;",
+                      "writeVar(\"modelId\", model && model._id);",
+                      "pm.test(\"model created without apiKey leak\", function () {",
+                      "  pm.expect(model._id).to.be.a(\"string\");",
+                      "  pm.expect(model).to.not.have.property(\"apiKey\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get AI Model",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update AI Model",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"description\": \"Updated by Postman collection\",\n  \"config\": {\n    \"maxTokens\": 300,\n    \"temperature\": 0.3\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"model updated\", function () {",
+                      "  pm.expect(bodyJson().data.description).to.eql(\"Updated by Postman collection\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Set Default AI Model - Opt In",
+              "request": {
+                "method": "PATCH",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}/default"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{superadminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                      "if (!shouldRun) {",
+                      "  pm.execution.skipRequest();",
+                      "}"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"model marked default\", function () {",
+                      "  pm.expect(bodyJson().data.isDefault).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03 - Business AI",
+      "item": [
+        {
+          "name": "List Available Business AI Models",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/business-ai/models"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 200\", function () {",
+                  "  pm.expect([200]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is true\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Business AI Selection",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/business-ai/selection"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 200\", function () {",
+                  "  pm.expect([200]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is true\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"selection is scoped to business\", function () {",
+                  "  pm.expect(String(bodyJson().data.businessId)).to.eql(String(readVar(\"businessId\")));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Select Business AI Model - Opt In",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{BASE_URL}}/api/business-ai/selection"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelId\": \"{{modelId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const shouldRun = (pm.environment.get(\"RUN_OPTIONAL_MUTATION_TESTS\") || pm.collectionVariables.get(\"RUN_OPTIONAL_MUTATION_TESTS\")) === \"true\";",
+                  "if (!shouldRun) {",
+                  "  pm.execution.skipRequest();",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 200\", function () {",
+                  "  pm.expect([200]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is true\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(true);",
+                  "});",
+                  "",
+                  "pm.test(\"selected model matches modelId\", function () {",
+                  "  pm.expect(String(bodyJson().data.activeAIModel._id)).to.eql(String(readVar(\"modelId\")));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Business AI Selection Requires Admin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/business-ai/selection"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{agentToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 403\", function () {",
+                  "  pm.expect([403]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is false\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(false);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04 - Customer Chat",
+      "item": [
+        {
+          "name": "Happy Path",
+          "item": [
+            {
+              "name": "Create Chat Ticket",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/chat/message"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"customerName\": \"Postman Customer\",\n  \"customerEmail\": \"{{chatCustomerEmail}}\",\n  \"subject\": \"Billing question from Postman\",\n  \"message\": \"I need help understanding a billing charge and would like an agent to review it.\",\n  \"priority\": \"high\",\n  \"category\": \"billing\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200 or 201\", function () {",
+                      "  pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const data = bodyJson().data;",
+                      "const ticket = data.ticket || {};",
+                      "writeVar(\"ticketId\", ticket._id);",
+                      "writeVar(\"conversationId\", ticket._id);",
+                      "writeVar(\"customerMessageId\", data.message && data.message._id);",
+                      "pm.test(\"chat response includes ticket and reply\", function () {",
+                      "  pm.expect(data.reply).to.be.a(\"string\").and.not.empty;",
+                      "  pm.expect(ticket._id).to.be.a(\"string\").and.not.empty;",
+                      "  pm.expect(String(ticket.businessId)).to.eql(String(readVar(\"businessId\")));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Continue Existing Conversation",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/chat/message"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessId\": \"{{businessId}}\",\n  \"conversationId\": \"{{conversationId}}\",\n  \"customerName\": \"Postman Customer\",\n  \"customerEmail\": \"{{chatCustomerEmail}}\",\n  \"message\": \"Here is one more detail on the same issue.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200 or 201\", function () {",
+                      "  pm.expect([200, 201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"conversation continuation returns a ticket\", function () {",
+                      "  pm.expect(bodyJson().data.ticket._id).to.be.a(\"string\").and.not.empty;",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Negative Tests",
+          "item": [
+            {
+              "name": "Chat Missing Message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/chat/message"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessId\": \"{{businessId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 400\", function () {",
+                      "  pm.expect([400]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Chat Invalid Business ID Format",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/chat/message"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessId\": \"not-a-mongo-id\",\n  \"message\": \"Hello\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 400\", function () {",
+                      "  pm.expect([400]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Chat Nonexistent Business",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/chat/message"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"businessId\": \"000000000000000000000000\",\n  \"message\": \"Hello\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 404\", function () {",
+                      "  pm.expect([404]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05 - Agent Tickets",
+      "item": [
+        {
+          "name": "Read APIs",
+          "item": [
+            {
+              "name": "Get Agent Me",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/me"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"agent me has business context\", function () {",
+                      "  pm.expect(String(bodyJson().data.businessId)).to.eql(String(readVar(\"businessId\")));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Agent Tickets",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const data = bodyJson().data;",
+                      "if (!readVar(\"ticketId\") && data.data && data.data.length) {",
+                      "  writeVar(\"ticketId\", data.data[0]._id);",
+                      "}",
+                      "pm.test(\"paginated ticket shape returned\", function () {",
+                      "  pm.expect(data).to.have.property(\"data\");",
+                      "  pm.expect(data).to.have.property(\"total\");",
+                      "  pm.expect(data).to.have.property(\"page\");",
+                      "  pm.expect(data).to.have.property(\"totalPages\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Tickets Filtered By Status",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets?status=open"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"all returned tickets are open\", function () {",
+                      "  (bodyJson().data.data || []).forEach((ticket) => pm.expect(ticket.status).to.eql(\"open\"));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Tickets Filtered By Priority",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets?priority=High"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"all returned tickets are high priority\", function () {",
+                      "  (bodyJson().data.data || []).forEach((ticket) => pm.expect(ticket.priority).to.eql(\"High\"));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "List Tickets With Pagination",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets?page=1&limit=5"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"pagination metadata is correct\", function () {",
+                      "  const data = bodyJson().data;",
+                      "  pm.expect(data.page).to.eql(1);",
+                      "  pm.expect(data.data.length).to.be.at.most(5);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Ticket Detail",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"ticket detail contains messages\", function () {",
+                      "  const data = bodyJson().data;",
+                      "  pm.expect(data.ticket._id).to.eql(readVar(\"ticketId\"));",
+                      "  pm.expect(data.messages).to.be.an(\"array\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Mutations",
+          "item": [
+            {
+              "name": "Assign Ticket To Agent",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/assign"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"agentId\": \"{{agentId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"ticket assigned to agent\", function () {",
+                      "  pm.expect(String(bodyJson().data.assignedAgent)).to.eql(String(readVar(\"agentId\")));",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Agent Add Message",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/messages"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"Thanks for the details. I am checking this for you.\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 201\", function () {",
+                      "  pm.expect([201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"agent message created\", function () {",
+                      "  pm.expect(bodyJson().data.senderType).to.eql(\"agent\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Ticket Status To Pending",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"pending\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"ticket is pending\", function () {",
+                      "  pm.expect(bodyJson().data.status).to.eql(\"pending\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Update Ticket Status To Resolved",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"resolved\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"ticket is resolved\", function () {",
+                      "  pm.expect(bodyJson().data.status).to.eql(\"resolved\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Negative And Isolation Tests",
+          "item": [
+            {
+              "name": "Invalid Ticket Status",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/status"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"done\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 400\", function () {",
+                      "  pm.expect([400]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Assign Ticket Requires Admin",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets/{{ticketId}}/assign"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"agentId\": \"{{agentId}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 403\", function () {",
+                      "  pm.expect([403]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Agent Tickets Missing Token",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/agent/tickets"
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 401\", function () {",
+                      "  pm.expect([401]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06 - Feedback",
+      "item": [
+        {
+          "name": "Happy Path",
+          "item": [
+            {
+              "name": "Generate Feedback Token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/feedback/tickets/{{ticketId}}/token"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"expiresInDays\": 14\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 201\", function () {",
+                      "  pm.expect([201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "const data = bodyJson().data;",
+                      "writeVar(\"feedbackToken\", data.token);",
+                      "pm.test(\"feedback token is returned\", function () {",
+                      "  pm.expect(data.token).to.be.a(\"string\").and.not.empty;",
+                      "  pm.expect(data.submitUrl).to.include(data.token);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Submit Feedback",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/feedback/{{feedbackToken}}"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rating\": 5,\n  \"resolved\": true,\n  \"comment\": \"Postman automated feedback submission\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 201\", function () {",
+                      "  pm.expect([201]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"feedback attached to ticket\", function () {",
+                      "  const feedback = bodyJson().data.feedback;",
+                      "  pm.expect(feedback.rating).to.eql(5);",
+                      "  pm.expect(feedback.resolved).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Feedback Analytics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/feedback/analytics"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});",
+                      "",
+                      "pm.test(\"analytics overview returned\", function () {",
+                      "  const data = bodyJson().data;",
+                      "  pm.expect(data).to.have.property(\"overview\");",
+                      "  pm.expect(data.overview).to.have.property(\"totalFeedback\");",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Get Feedback Analytics With Filters",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/feedback/analytics?feedbackType=agent&category=billing"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{adminToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 200\", function () {",
+                      "  pm.expect([200]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is true\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(true);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Negative Tests",
+          "item": [
+            {
+              "name": "Submit Feedback Invalid Token",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/feedback/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"rating\": 4,\n  \"resolved\": true,\n  \"comment\": \"Invalid token case\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 404\", function () {",
+                      "  pm.expect([404]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "Feedback Analytics Requires Admin",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{BASE_URL}}/api/feedback/analytics"
+                },
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{agentToken}}",
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "function readVar(key) {",
+                      "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                      "}",
+                      "",
+                      "function writeVar(key, value) {",
+                      "  if (value === undefined || value === null || value === \"\") return;",
+                      "  pm.collectionVariables.set(key, value);",
+                      "  try {",
+                      "    pm.environment.set(key, value);",
+                      "  } catch (error) {",
+                      "    // Collection variables still work without an active environment.",
+                      "  }",
+                      "}",
+                      "",
+                      "function bodyJson() {",
+                      "  return pm.response.json();",
+                      "}",
+                      "",
+                      "",
+                      "pm.test(\"Expected status: 403\", function () {",
+                      "  pm.expect([403]).to.include(pm.response.code);",
+                      "});",
+                      "",
+                      "pm.test(\"success is false\", function () {",
+                      "  pm.expect(bodyJson().success).to.eql(false);",
+                      "});"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07 - Cleanup",
+      "item": [
+        {
+          "name": "Delete Created AI Model",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/api/superadmin/models/{{modelId}}"
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{superadminToken}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function readVar(key) {",
+                  "  return pm.environment.get(key) || pm.collectionVariables.get(key);",
+                  "}",
+                  "",
+                  "function writeVar(key, value) {",
+                  "  if (value === undefined || value === null || value === \"\") return;",
+                  "  pm.collectionVariables.set(key, value);",
+                  "  try {",
+                  "    pm.environment.set(key, value);",
+                  "  } catch (error) {",
+                  "    // Collection variables still work without an active environment.",
+                  "  }",
+                  "}",
+                  "",
+                  "function bodyJson() {",
+                  "  return pm.response.json();",
+                  "}",
+                  "",
+                  "",
+                  "pm.test(\"Expected status: 200\", function () {",
+                  "  pm.expect([200]).to.include(pm.response.code);",
+                  "});",
+                  "",
+                  "pm.test(\"success is true\", function () {",
+                  "  pm.expect(bodyJson().success).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

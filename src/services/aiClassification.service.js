@@ -10,6 +10,11 @@ import {
 const MODEL_CACHE_TTL_MS = 60 * 1000;
 const CLASSIFICATION_TIMEOUT_MS = Number(process.env.AI_CLASSIFICATION_TIMEOUT_MS) || 3000;
 const REPLY_TIMEOUT_MS = Number(process.env.AI_REPLY_TIMEOUT_MS) || 5000;
+const MAX_MESSAGE_CHARS = Number(process.env.AI_MAX_MESSAGE_CHARS) || 3000;
+const MAX_HISTORY_ITEMS = Number(process.env.AI_MAX_HISTORY_ITEMS) || 8;
+const MAX_HISTORY_CONTENT_CHARS = Number(process.env.AI_MAX_HISTORY_CONTENT_CHARS) || 700;
+const MAX_KNOWLEDGE_ENTRIES = Number(process.env.AI_MAX_KNOWLEDGE_ENTRIES) || 3;
+const MAX_KNOWLEDGE_CONTENT_CHARS = Number(process.env.AI_MAX_KNOWLEDGE_CONTENT_CHARS) || 1200;
 
 const DEFAULT_CLASSIFICATION = {
   priority: "Medium",
@@ -109,6 +114,15 @@ class AIClassificationService {
     });
 
     return modelContext;
+  }
+
+  invalidateModelCache(businessId = null) {
+    if (businessId) {
+      this.modelCache.delete(String(businessId));
+      return;
+    }
+
+    this.modelCache.clear();
   }
 
   async callWithRetry(modelContext, prompt, timeoutMs, purpose) {
@@ -256,7 +270,7 @@ class AIClassificationService {
   buildClassificationPrompt(message, history) {
     return CLASSIFICATION_SYSTEM_PROMPT
       .replace("{history}", this.formatHistory(history))
-      .replace("{message}", this.escapePromptValue(message))
+      .replace("{message}", this.escapePromptValue(this.truncateForPrompt(message, MAX_MESSAGE_CHARS)))
       .replace("{priorityDefinitions}", PRIORITY_DEFINITIONS);
   }
 
@@ -265,7 +279,7 @@ class AIClassificationService {
       .replace("{businessName}", this.escapePromptValue(businessName))
       .replace("{knowledgeEntries}", this.formatKnowledge(knowledgeEntries))
       .replace("{history}", this.formatHistory(history))
-      .replace("{message}", this.escapePromptValue(message));
+      .replace("{message}", this.escapePromptValue(this.truncateForPrompt(message, MAX_MESSAGE_CHARS)));
   }
 
   parseClassification(text) {
@@ -339,8 +353,12 @@ class AIClassificationService {
     if (!history.length) return "No previous conversation.";
 
     return history
-      .slice(-10)
-      .map((item) => `${item.role || item.senderType || "unknown"}: ${item.content}`)
+      .slice(-MAX_HISTORY_ITEMS)
+      .map((item) => {
+        const role = this.truncateForPrompt(item.role || item.senderType || "unknown", 40);
+        const content = this.truncateForPrompt(item.content, MAX_HISTORY_CONTENT_CHARS);
+        return `${role}: ${content}`;
+      })
       .join("\n");
   }
 
@@ -350,16 +368,30 @@ class AIClassificationService {
     }
 
     return knowledgeEntries
+      .slice(0, MAX_KNOWLEDGE_ENTRIES)
       .map((entry, index) => {
-        const title = entry.title || `Entry ${index + 1}`;
-        const content = entry.content || entry.answer || entry.body || "";
+        const title = this.truncateForPrompt(entry.title || `Entry ${index + 1}`, 160);
+        const content = this.truncateForPrompt(
+          entry.content || entry.answer || entry.body || "",
+          MAX_KNOWLEDGE_CONTENT_CHARS
+        );
         return `${index + 1}. ${title}\n${content}`;
       })
       .join("\n\n");
   }
 
   escapePromptValue(value = "") {
-    return String(value).replace(/"/g, '\\"');
+    return String(value)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"')
+      .replace(/\u0000/g, "");
+  }
+
+  truncateForPrompt(value = "", limit = 1000) {
+    const text = String(value || "").replace(/\s+/g, " ").trim();
+    if (text.length <= limit) return text;
+
+    return `${text.slice(0, Math.max(0, limit - 3)).trimEnd()}...`;
   }
 
   buildGeminiEndpoint(endpoint, apiKey) {

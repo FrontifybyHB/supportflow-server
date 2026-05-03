@@ -9,16 +9,7 @@ import User from "../models/user.model.js";
  */
 export const protect = async (req, res, next) => {
     try {
-        let token;
-
-        // 1️⃣ Get token from Authorization header
-        if (
-            req.headers.authorization &&
-            req.headers.authorization.startsWith("Bearer") ||
-            req.cookies.accessToken
-        ) {
-            token = req.cookies.accessToken || req.headers.authorization.split(" ")[1];
-        }
+        const token = getAccessToken(req);
 
 
 
@@ -30,7 +21,7 @@ export const protect = async (req, res, next) => {
         }
 
         // 3️⃣ Verify token
-        const decoded = jwt.verify(token, config.JWT_SECRET);
+        const decoded = jwt.verify(token, config.JWT_ACCESS_SECRET);
         if (decoded.type && decoded.type !== "access") {
             return next(appError("Invalid access token. Please log in again.", 401));
         }
@@ -68,6 +59,18 @@ export const protect = async (req, res, next) => {
 
         next(error);
     }
+};
+
+const getAccessToken = (req) => {
+    if (req.cookies?.accessToken) {
+        return req.cookies.accessToken;
+    }
+
+    const authorization = req.headers.authorization;
+    if (typeof authorization !== "string") return "";
+
+    const match = authorization.match(/^Bearer\s+(.+)$/i);
+    return match?.[1]?.trim() || "";
 };
 
 export const restrictTo = (...roles) => {

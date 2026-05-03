@@ -42,7 +42,7 @@ class TicketService {
       content: data.message,
     });
 
-    io?.to(String(ticket.businessId)).emit("ticket_created", ticket);
+    this.emitTicketCreated(io, ticket);
     io?.to(String(ticket._id)).emit("new_message", message);
 
     logger.info(`Ticket created: ${ticket._id}`);
@@ -83,7 +83,7 @@ class TicketService {
       content: aiReply,
     });
 
-    io?.to(String(ticket.businessId)).emit("ticket_created", ticket);
+    this.emitTicketCreated(io, ticket);
     io?.to(String(ticket._id)).emit("new_message", customerMessage);
     io?.to(String(ticket._id)).emit("new_message", assistantMessage);
 
@@ -209,10 +209,21 @@ class TicketService {
     if (!businessId) return [];
 
     if (data.conversationId) {
-      const directMessages = await this.messageRepository.findByTicketId(
+      const ticket = await this.ticketRepository.findById(
         data.conversationId,
         businessId
       );
+      const customerEmail = this.normalizeEmail(data.customerEmail);
+      const ticketEmail = this.normalizeEmail(ticket?.customer?.email);
+      const canUseConversation =
+        ticket && customerEmail && ticketEmail && customerEmail === ticketEmail;
+
+      const directMessages = canUseConversation
+        ? await this.messageRepository.findByTicketId(
+          data.conversationId,
+          businessId
+        )
+        : [];
 
       if (directMessages.length) {
         return this.toConversationHistory(directMessages);
@@ -297,6 +308,14 @@ class TicketService {
     if (senderType === "ai") return "assistant";
     if (senderType === "agent") return "agent";
     return "system";
+  }
+
+  normalizeEmail(email = "") {
+    return String(email || "").trim().toLowerCase();
+  }
+
+  emitTicketCreated(io, ticket) {
+    io?.to(String(ticket.businessId)).emit("ticket_created", { ticket });
   }
 }
 

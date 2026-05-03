@@ -7,21 +7,21 @@ export const customerTicketValidator = [
     .isMongoId()
     .withMessage("Business ID is invalid"),
   body("message")
+    .trim()
     .notEmpty()
     .withMessage("Message is required")
-    .isLength({ max: 5000 })
-    .withMessage("Message cannot exceed 5000 characters")
-    .trim(),
+    .isLength({ min: 1, max: 3000 })
+    .withMessage("Message must be between 1 and 3000 characters"),
   body("subject")
     .optional()
+    .trim()
     .isLength({ max: 150 })
-    .withMessage("Subject cannot exceed 150 characters")
-    .trim(),
+    .withMessage("Subject cannot exceed 150 characters"),
   body("conversationId")
     .optional({ checkFalsy: true })
     .isMongoId()
     .withMessage("Conversation ID is invalid"),
-  body("customerName").optional().isLength({ max: 100 }).trim(),
+  body("customerName").optional().trim().isLength({ max: 100 }),
   body("customerEmail")
     .optional({ checkFalsy: true })
     .isEmail()
@@ -29,9 +29,9 @@ export const customerTicketValidator = [
     .normalizeEmail(),
   body("priority")
     .optional()
-    .isLength({ max: 20 })
-    .withMessage("Priority cannot exceed 20 characters")
-    .trim(),
+    .trim()
+    .isIn(["Low", "Medium", "High", "Critical", "low", "medium", "high", "urgent"])
+    .withMessage("Priority must be Low, Medium, High, or Critical"),
   body("category")
     .optional()
     .isIn(["billing", "account", "technical", "general", "refund", "security", "other"])
@@ -81,9 +81,9 @@ export const assignTicketValidator = [
 
 export const messageValidator = [
   body("content")
+    .trim()
     .notEmpty()
     .withMessage("Message content is required")
-    .isLength({ max: 5000 })
-    .withMessage("Message cannot exceed 5000 characters")
-    .trim(),
+    .isLength({ min: 1, max: 3000 })
+    .withMessage("Message must be between 1 and 3000 characters"),
 ];

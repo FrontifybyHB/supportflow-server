@@ -4,6 +4,19 @@ import logger from "../loggers/winston.logger.js";
 import aiOrchestrationService from "../services/aiOrchestration.service.js";
 import ticketService from "../services/ticket.service.js";
 
+const AI_UNAVAILABLE_RESULT = {
+  handoff: true,
+  reply: "An agent will assist you shortly",
+  priority: "Medium",
+  category: "other",
+  confidence: 0,
+  reason: "AI unavailable - manual review needed",
+  tokensUsed: 0,
+  classificationTokensUsed: 0,
+  replyTokensUsed: 0,
+  costEstimate: 0,
+};
+
 class ChatController {
   constructor(service = ticketService, aiService = aiOrchestrationService) {
     this.ticketService = service;
@@ -15,7 +28,7 @@ class ChatController {
     const conversationHistory = await this.ticketService.getConversationHistory(
       req.body
     );
-    const aiResult = await this.aiService.classifyAndHandle(
+    const aiResult = await this.safeClassifyAndHandle(
       message,
       conversationHistory,
       businessId
@@ -87,6 +100,19 @@ class ChatController {
       )
     );
   });
+
+  async safeClassifyAndHandle(message, conversationHistory, businessId) {
+    try {
+      return await this.aiService.classifyAndHandle(
+        message,
+        conversationHistory,
+        businessId
+      );
+    } catch (error) {
+      logger.error(`AI orchestration unavailable; creating handoff ticket: ${error.message}`);
+      return { ...AI_UNAVAILABLE_RESULT };
+    }
+  }
 }
 
 const chatController = new ChatController();

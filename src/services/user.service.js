@@ -86,8 +86,8 @@ class UserService {
     generateAccessToken({ userId, username, email }) {
         return jwt.sign(
             { type: "access", id: userId, username, email },
-            config.JWT_SECRET,
-            { expiresIn: CONSTANT.ACCESS_TOKEN_EXPIRATION }
+            config.JWT_ACCESS_SECRET,
+            { expiresIn: config.JWT_ACCESS_EXPIRY || CONSTANT.ACCESS_TOKEN_EXPIRATION }
         );
     }
 
@@ -97,8 +97,8 @@ class UserService {
     generateRefreshToken({ userId }) {
         return jwt.sign(
             { type: "refresh", userId, id: userId },
-            config.JWT_SECRET,
-            { expiresIn: CONSTANT.REFRESH_TOKEN_EXPIRATION }
+            config.JWT_REFRESH_SECRET,
+            { expiresIn: config.JWT_REFRESH_EXPIRY || CONSTANT.REFRESH_TOKEN_EXPIRATION }
         );
     }
 
@@ -107,7 +107,7 @@ class UserService {
      */
     verifyRefreshToken(refreshToken) {
         try {
-            const decoded = jwt.verify(refreshToken, config.JWT_SECRET);
+            const decoded = jwt.verify(refreshToken, config.JWT_REFRESH_SECRET);
             if (decoded.type !== "refresh") {
                 throw appError("Invalid refresh token", 401);
             }
@@ -152,7 +152,7 @@ class UserService {
 
         const token = jwt.sign(
             { id: user._id },
-            config.JWT_SECRET,
+            config.JWT_ACCESS_SECRET,
             { expiresIn: CONSTANT.VERIFICATION_TOKEN_EXPIRATION }
         );
 
@@ -167,7 +167,7 @@ class UserService {
      */
     async verifyEmail(token) {
         try {
-            const decoded = jwt.verify(token, config.JWT_SECRET);
+            const decoded = jwt.verify(token, config.JWT_ACCESS_SECRET);
             const user = await this.userRepository.findByIdWithEmailVerificationToken(decoded.id);
 
             if (!user || user.emailVerificationToken !== token) {

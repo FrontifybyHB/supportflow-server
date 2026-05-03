@@ -1,5 +1,5 @@
 // middleware/rateLimiter.js
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 export const generalRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -11,6 +11,22 @@ export const generalRateLimiter = rateLimit({
         res.status(429).json({
             success: false,
             message: "Too many requests. Please try again later.",
+        });
+    },
+});
+
+export const chatRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req) =>
+        `${ipKeyGenerator(req.ip)}:${req.body?.businessId || "unknown-business"}`,
+
+    handler: (req, res) => {
+        res.status(429).json({
+            success: false,
+            message: "Too many chat requests. Please try again shortly.",
         });
     },
 });

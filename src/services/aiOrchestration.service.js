@@ -1,4 +1,5 @@
 import logger from "../loggers/winston.logger.js";
+import appError from "../utils/appError.js";
 import BusinessRepository from "../repositories/business.repository.js";
 import aiClassificationService from "./aiClassification.service.js";
 import aiSafetyService from "./aiSafety.service.js";
@@ -18,6 +19,7 @@ class AIOrchestrationService {
   }
 
   async classifyAndHandle(message, conversationHistory = [], businessId) {
+    const business = await this.getActiveBusiness(businessId);
     const classification = await this.classificationService.classify(
       message,
       conversationHistory,
@@ -31,7 +33,6 @@ class AIOrchestrationService {
     }
 
     try {
-      const business = await this.businessRepository.findById(businessId);
       const knowledgeEntries = await this.businessRepository.getBusinessKnowledge(
         businessId,
         message,
@@ -99,6 +100,15 @@ class AIOrchestrationService {
     }
   }
 
+  async getActiveBusiness(businessId) {
+    const business = await this.businessRepository.findById(businessId);
+    if (!business || !business.isActive) {
+      throw appError("Business not found or inactive", 404);
+    }
+
+    return business;
+  }
+
   async generateAIResponse(message, businessId, conversationId = null) {
     return this.classifyAndHandle(
       message,
@@ -127,11 +137,17 @@ class AIOrchestrationService {
 
   async updateBusinessUsage(businessId, tokensUsed) {
     const safeTokens = Math.max(Number(tokensUsed) || 0, 0);
-    await this.businessRepository.incrementUsage(businessId, {
-      aiCalls: 1,
-      tokensConsumed: safeTokens,
-      costEstimate: this.calculateCost(safeTokens),
-    });
+    try {
+      await this.businessRepository.incrementUsage(businessId, {
+        aiCalls: 1,
+        tokensConsumed: safeTokens,
+        costEstimate: this.calculateCost(safeTokens),
+      });
+    } catch (error) {
+      logger.warn(
+        `AI usage tracking failed: businessId=${businessId}, error=${error.message}`
+      );
+    }
   }
 
   calculateCost(tokensUsed) {

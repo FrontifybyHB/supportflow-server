@@ -15,16 +15,17 @@ export const createSocketServer = (httpServer) => {
 
   io.use(async (socket, next) => {
     try {
-      const authToken = socket.handshake.auth?.token;
-      const headerToken = socket.handshake.headers.authorization;
-      const token = authToken || headerToken?.replace("Bearer ", "");
+      const token = getSocketToken(socket);
 
       if (!token) {
         return next(new Error("Socket authentication token is required"));
       }
 
-      const decoded = jwt.verify(token, config.JWT_SECRET);
+      const decoded = jwt.verify(token, config.JWT_ACCESS_SECRET);
       if (decoded.type && decoded.type !== "access") {
+        return next(new Error("Invalid socket access token"));
+      }
+      if (!decoded.id || !mongoose.Types.ObjectId.isValid(decoded.id)) {
         return next(new Error("Invalid socket access token"));
       }
 
@@ -61,6 +62,19 @@ export const createSocketServer = (httpServer) => {
   return io;
 };
 
+const getSocketToken = (socket) => {
+  const authToken = socket.handshake.auth?.token;
+  if (typeof authToken === "string" && authToken.trim()) {
+    return authToken.trim();
+  }
+
+  const headerToken = socket.handshake.headers.authorization;
+  if (typeof headerToken !== "string") return "";
+
+  const match = headerToken.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || "";
+};
+
 const joinBusinessRoom = (socket, businessId) => {
   const user = socket.user;
 
@@ -89,7 +103,12 @@ const joinAuthorizedRoom = async (socket, room) => {
     return { success: false, message: "Room is not authorized" };
   }
 
-  const ticket = await Ticket.findById(room)
+  const ticketFilter =
+    user.role === "superadmin"
+      ? { _id: room }
+      : { _id: room, businessId: user.businessId };
+
+  const ticket = await Ticket.findOne(ticketFilter)
     .select("businessId assignedAgent")
     .lean();
 

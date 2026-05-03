@@ -9,7 +9,7 @@ const router = express.Router();
 
 router.use(protect);
 router.use(tenantMiddleware);
-router.use(restrictTo("admin"));
+router.use(restrictTo("admin", "superadmin"));
 
 router.get("/models", businessAIController.listModels);
 router.get("/selection", businessAIController.getSelection);

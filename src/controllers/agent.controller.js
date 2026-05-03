@@ -1,14 +1,42 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import ApiResponse from "../utils/apiResponse.js";
+import agentService from "../services/agent.service.js";
 import ticketService from "../services/ticket.service.js";
 
 class AgentController {
-  constructor(service = ticketService) {
-    this.ticketService = service;
+  constructor({ tickets = ticketService, agents = agentService } = {}) {
+    this.ticketService = tickets;
+    this.agentService = agents;
   }
 
   getMe = asyncHandler(async (req, res) => {
     res.status(200).json(ApiResponse.success(req.user, "Agent fetched"));
+  });
+
+  createAgent = asyncHandler(async (req, res) => {
+    const agent = await this.agentService.createAgent(req.body, req.businessId);
+    res.status(201).json(ApiResponse.success({ agent }, "Agent created", 201));
+  });
+
+  listAgents = asyncHandler(async (req, res) => {
+    const result = await this.agentService.listAgents(req.businessId, req.query);
+    res.status(200).json(ApiResponse.success({
+      agents: result.data,
+      pagination: {
+        total: result.total,
+        page: result.page,
+        totalPages: result.totalPages,
+      },
+    }, "Agents fetched"));
+  });
+
+  updateAgent = asyncHandler(async (req, res) => {
+    const agent = await this.agentService.updateAgent(
+      req.params.id,
+      req.businessId,
+      { isActive: req.body.isActive }
+    );
+    res.status(200).json(ApiResponse.success({ agent }, "Agent updated"));
   });
 
   listTickets = asyncHandler(async (req, res) => {

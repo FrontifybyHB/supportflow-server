@@ -22,6 +22,25 @@ const TOKEN_HASH_ROUNDS = 10;
 const googleClient = new OAuth2Client(config.GOOGLE_CLIENT_ID);
 
 const normalizeEmail = (email) => email?.trim().toLowerCase();
+const includeDeliveryDebug = () => config.NODE_ENV !== "production";
+
+const summarizeOtpDelivery = (delivery) => {
+    if (!delivery) return { status: "unknown" };
+    if (delivery.error) return { status: "failed", error: delivery.error };
+    if (delivery.queued) return { status: "queued", jobId: delivery.jobId };
+    if (delivery.email?.skipped) return { status: "skipped", reason: "smtp_not_configured" };
+    if (delivery.email?.rejected?.length) {
+        return { status: "rejected", rejected: delivery.email.rejected };
+    }
+    if (delivery.email?.messageId || delivery.email?.accepted?.length) {
+        return {
+            status: "sent",
+            messageId: delivery.email.messageId,
+            accepted: delivery.email.accepted,
+        };
+    }
+    return { status: "unknown" };
+};
 
 const toSafeUser = (user) => {
     const source = user?.toObject ? user.toObject() : user;
@@ -64,13 +83,14 @@ class UserService {
             isEmailVerified: false,
         });
 
-        await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
+        const delivery = await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
         const { refreshToken } = await this.createRefreshSession(user._id, request);
 
         return {
             refreshToken,
             user: toSafeUser(user),
             message: "Registration successful. Verification OTP queued.",
+            ...(includeDeliveryDebug() && { otpDelivery: summarizeOtpDelivery(delivery) }),
         };
     }
 
@@ -91,11 +111,12 @@ class UserService {
         }
 
         if (!user.isEmailVerified) {
-            await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
+            const delivery = await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
             return {
                 needsVerification: true,
                 userId: user._id,
                 message: "Please verify your email. A new OTP has been queued.",
+                ...(includeDeliveryDebug() && { otpDelivery: summarizeOtpDelivery(delivery) }),
             };
         }
 
@@ -217,18 +238,27 @@ class UserService {
             throw appError("User not found", 404);
         }
 
-        await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
-        return { message: "New verification OTP queued" };
+        const delivery = await this.createAndQueueOtp(user, OTP_PURPOSES.EMAIL_VERIFICATION);
+        return {
+            message: "New verification OTP queued",
+            ...(includeDeliveryDebug() && { otpDelivery: summarizeOtpDelivery(delivery) }),
+        };
     }
 
     async forgotPassword(email) {
         const user = await this.userRepo.findByEmail(normalizeEmail(email));
+        let delivery = null;
 
         if (user) {
-            await this.createAndQueueOtp(user, OTP_PURPOSES.PASSWORD_RESET);
+            delivery = await this.createAndQueueOtp(user, OTP_PURPOSES.PASSWORD_RESET);
         }
 
-        return { message: "If this email exists, a reset OTP has been queued" };
+        return {
+            message: "If this email exists, a reset OTP has been queued",
+            ...(includeDeliveryDebug() && {
+                otpDelivery: user ? summarizeOtpDelivery(delivery) : { status: "no_matching_user" },
+            }),
+        };
     }
 
     async resetPassword({ userId, otp, newPassword }) {
@@ -313,7 +343,7 @@ class UserService {
             expiresAt: getOtpExpiresAt(),
         });
 
-        await enqueueOtpEmail({
+        return enqueueOtpEmail({
             to: user.email,
             otp,
             purpose,

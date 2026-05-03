@@ -4,6 +4,10 @@ import { protect, restrictTo } from "../middlewares/auth.middleware.js";
 import tenantMiddleware from "../middlewares/tenant.middleware.js";
 import { objectIdParam, validate } from "../middlewares/validator.middleware.js";
 import {
+  createAgentValidator,
+  updateAgentValidator,
+} from "../validators/auth.validator.js";
+import {
   assignTicketValidator,
   messageValidator,
   statusValidator,
@@ -15,6 +19,20 @@ const router = express.Router();
 router.use(protect);
 router.use(tenantMiddleware);
 router.use(restrictTo("agent", "admin", "superadmin"));
+
+router.post(
+  "/",
+  restrictTo("admin"),
+  validate(createAgentValidator),
+  agentController.createAgent
+);
+router.get("/", restrictTo("admin"), agentController.listAgents);
+router.patch(
+  "/:id",
+  restrictTo("admin"),
+  validate(updateAgentValidator),
+  agentController.updateAgent
+);
 
 router.get("/me", agentController.getMe);
 router.get("/tickets", validate(ticketQueryValidator), agentController.listTickets);

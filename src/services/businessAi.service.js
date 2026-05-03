@@ -1,3 +1,5 @@
+import mongoose from "mongoose";
+
 import appError from "../utils/appError.js";
 import logger from "../loggers/winston.logger.js";
 import BusinessAIRepository from "../repositories/businessAi.repository.js";
@@ -18,6 +20,17 @@ class BusinessAIService {
   }
 
   async getSelection(businessId) {
+    if (!businessId) {
+      const defaultModel = await this.repository.getActiveDefaultWithSecret();
+      return {
+        businessId: null,
+        source: "platform_default",
+        model: defaultModel ? this.toPublicModel(defaultModel) : null,
+      };
+    }
+
+    this.assertObjectId(businessId, "Valid businessId is required");
+
     const business = await this.getActiveBusiness(businessId);
     const selectedModel = business.activeAIModel
       ? await this.repository.findModelById(business.activeAIModel)
@@ -40,12 +53,27 @@ class BusinessAIService {
   }
 
   async selectModel(businessId, modelId) {
-    await this.getActiveBusiness(businessId);
-
     const model = await this.repository.findModelById(modelId);
     if (!model || !model.isActive) {
       throw appError("Active AI model not found", 404);
     }
+
+    if (!businessId) {
+      const defaultModel = await this.repository.setDefaultModel(modelId);
+      this.classificationService.invalidateModelCache();
+
+      logger.info(`Platform default AI model selected: ${modelId}`);
+
+      return {
+        businessId: null,
+        source: "platform_default",
+        activeAIModel: this.toPublicModel(defaultModel || model),
+        updatedAt: defaultModel?.updatedAt,
+      };
+    }
+
+    this.assertObjectId(businessId, "Valid businessId is required");
+    await this.getActiveBusiness(businessId);
 
     const business = await this.repository.updateBusinessActiveModel(
       businessId,
@@ -60,6 +88,12 @@ class BusinessAIService {
       activeAIModel: this.toPublicModel(model),
       updatedAt: business.updatedAt,
     };
+  }
+
+  assertObjectId(value, message) {
+    if (!mongoose.Types.ObjectId.isValid(value)) {
+      throw appError(message, 422);
+    }
   }
 
   async getActiveBusiness(businessId) {

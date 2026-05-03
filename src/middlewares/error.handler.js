@@ -1,7 +1,9 @@
 import logger from "../loggers/winston.logger.js";
 import config from "../config/config.js";
 
-const errorHandler = (err, req, res) => {
+const errorHandler = (err, req, res, _next) => {
+    void _next;
+
     const statusCode = err.statusCode || 500;
 
     const nodeEnv = config.NODE_ENV;
@@ -15,12 +17,15 @@ const errorHandler = (err, req, res) => {
     });
 
     // Frontend-safe response
+    const isServerError = statusCode >= 500;
+
     res.status(statusCode).json({
         success: false,
         message:
-            nodeEnv === "production"
+            nodeEnv === "production" && isServerError
                 ? "Internal Server Error"
                 : err.message,
+        code: err.code,
         stack: nodeEnv === "development" ? err.stack : undefined,
     });
 };

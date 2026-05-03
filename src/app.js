@@ -20,10 +20,18 @@ app.use(generalRateLimiter)
 
 // import routes
 import authRoutes from "./routes/auth.routes.js";
+import agentRoutes from "./routes/agent.routes.js";
+import businessRoutes from "./routes/business.routes.js";
+import customerRoutes from "./routes/customer.routes.js";
+import superAdminRoutes from "./routes/superadmin.routes.js";
 import errorHandler from './middlewares/error.handler.js'
 
 // Auth Routes
 app.use('/api/v1/auth', authRoutes)
+app.use('/api/v1/business', businessRoutes)
+app.use('/api/v1/agents', agentRoutes)
+app.use('/api/v1/customer', customerRoutes)
+app.use('/api/v1/superadmin', superAdminRoutes)
 
 
 

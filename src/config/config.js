@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const _config = {
     NODE_ENV: process.env.NODE_ENV || 'development',
@@ -33,5 +33,14 @@ const _config = {
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
 };
 
+_config.JWT_SECRET = _config.JWT_ACCESS_SECRET;
+
+if (!_config.JWT_ACCESS_SECRET) {
+    // eslint-disable-next-line no-console
+    console.error(
+        'JWT_ACCESS_SECRET or JWT_SECRET is required. Set one in your environment before starting the server.'
+    );
+    process.exit(1);
+}
 
 export default _config;

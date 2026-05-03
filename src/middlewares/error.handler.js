@@ -1,5 +1,9 @@
 import logger from "../loggers/winston.logger.js";
 import config from "../config/config.js";
+import ApiResponse from "../utils/apiResponse.js";
+
+const errorHandler = (err, req, res, next) => {
+    void next;
 
 const errorHandler = (err, req, res, _next) => {
     void _next;

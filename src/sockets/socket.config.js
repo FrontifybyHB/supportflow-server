@@ -2,15 +2,13 @@ import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 import config from "../config/config.js";
+import { buildCorsOptions } from "../config/cors.config.js";
 import User from "../models/user.model.js";
 import Ticket from "../models/ticket.model.js";
 
 export const createSocketServer = (httpServer) => {
   const io = new Server(httpServer, {
-    cors: {
-      origin: config.CLIENT_URL,
-      credentials: true,
-    },
+    cors: buildCorsOptions(),
   });
 
   io.use(async (socket, next) => {

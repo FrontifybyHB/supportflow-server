@@ -9,6 +9,8 @@ import tenantMiddleware from './middlewares/tenant.middleware.js';
 
 const app = express();
 
+app.set('trust proxy', config.TRUST_PROXY);
+
 app.use(
     buildCorsMiddleware());
 app.use(morganLogger);

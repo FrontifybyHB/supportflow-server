@@ -21,6 +21,9 @@ const getTransporter = () => {
             host: config.EMAIL_HOST,
             port: Number(config.EMAIL_PORT || 587),
             secure: Number(config.EMAIL_PORT) === 465,
+            connectionTimeout: Number(config.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
+            greetingTimeout: Number(config.EMAIL_GREETING_TIMEOUT_MS || 10000),
+            socketTimeout: Number(config.EMAIL_SOCKET_TIMEOUT_MS || 15000),
             auth: {
                 user: config.EMAIL_USER,
                 pass: config.EMAIL_PASSWORD,

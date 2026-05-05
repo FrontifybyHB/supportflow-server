@@ -6,7 +6,9 @@
 class OtpRepositoryContract {
     /**
      * @param {Object} data
-     * @param {string} data.userId
+     * @param {string} [data.userId]
+     * @param {string} [data.customerId]
+     * @param {string} [data.businessId]
      * @param {string} data.otpHash
      * @param {string} data.purpose
      * @param {Date} data.expiresAt
@@ -29,6 +31,17 @@ class OtpRepositoryContract {
     }
 
     /**
+     * Returns the latest unused OTP for a customer/purpose, including the hashed value.
+     * @param {string} customerId
+     * @param {string} purpose
+     * @returns {Promise<Object|null>}
+     */
+    async findLatestUnusedForCustomerWithHash(_customerId, _purpose) {
+        void _customerId; void _purpose;
+        throw new Error("Method not implemented: findLatestUnusedForCustomerWithHash");
+    }
+
+    /**
      * Marks every previous unused OTP for the same user/purpose as used.
      * @param {string} userId
      * @param {string} purpose
@@ -37,6 +50,17 @@ class OtpRepositoryContract {
     async markPreviousAsUsed(_userId, _purpose) {
         void _userId; void _purpose;
         throw new Error("Method not implemented: markPreviousAsUsed");
+    }
+
+    /**
+     * Marks every previous unused OTP for the same customer/purpose as used.
+     * @param {string} customerId
+     * @param {string} purpose
+     * @returns {Promise<number>}
+     */
+    async markPreviousForCustomerAsUsed(_customerId, _purpose) {
+        void _customerId; void _purpose;
+        throw new Error("Method not implemented: markPreviousForCustomerAsUsed");
     }
 
     /**

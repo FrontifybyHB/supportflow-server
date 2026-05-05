@@ -1,13 +1,15 @@
 import asyncHandler from "../utils/asyncHandler.js";
 import appError from "../utils/appError.js";
 import { REFRESH_TOKEN_COOKIE } from "../constants/constants.js";
+import customerService from "../services/customer.service.js";
 import userService from "../services/user.service.js";
 import { success } from "../utils/response.js";
 import { clearRefreshCookie, setRefreshCookie } from "../utils/tokens.js";
 
 class AuthController {
-    constructor(service = userService) {
+    constructor(service = userService, customerAuthService = customerService) {
         this.userService = service;
+        this.customerService = customerAuthService;
     }
 
     register = asyncHandler(async (req, res) => {
@@ -73,6 +75,16 @@ class AuthController {
 
     resendOtp = asyncHandler(async (req, res) => {
         const result = await this.userService.resendOtp(req.body.userId);
+        return success(res, result);
+    });
+
+    requestCustomerEmailOtp = asyncHandler(async (req, res) => {
+        const result = await this.customerService.requestEmailVerification(req.body);
+        return success(res, result, 201);
+    });
+
+    verifyCustomerEmailOtp = asyncHandler(async (req, res) => {
+        const result = await this.customerService.verifyEmailOtp(req.body);
         return success(res, result);
     });
 

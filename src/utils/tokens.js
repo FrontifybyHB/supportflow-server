@@ -42,11 +42,13 @@ export const generateRefreshToken = (userId, sessionId = new mongoose.Types.Obje
     return { token, sessionId };
 };
 
-export const generateCustomerToken = ({ customerId, businessId }) => {
+export const generateCustomerToken = ({ customerId, businessId, email, isEmailVerified = false }) => {
     return jwt.sign(
         {
             customerId: customerId.toString(),
             businessId: businessId.toString(),
+            email,
+            isEmailVerified,
             role: "customer",
         },
         config.JWT_ACCESS_SECRET,

@@ -16,6 +16,12 @@ const passwordRule = (field = 'password') => body(field)
         return true;
     });
 
+const pickFirst = (...values) => values.find((value) => value !== undefined && value !== null && value !== '');
+const customerNameFrom = (value = {}) => pickFirst(value.name, value.customerName, value.userName);
+const customerEmailFrom = (value = {}) => pickFirst(value.email, value.customerEmail);
+const customerPhoneFrom = (value = {}) => pickFirst(value.phone, value.phoneNumber, value.customerPhone);
+const otpFrom = (value = {}) => pickFirst(value.otp, value.code);
+
 export const registerValidator = [
     body('name')
         .notEmpty()
@@ -62,6 +68,53 @@ export const verifyOtpValidator = [
 
 export const resendOtpValidator = [
     body('userId').isMongoId().withMessage('Valid userId is required'),
+];
+
+export const requestCustomerEmailOtpValidator = [
+    body('businessId').isMongoId().withMessage('Valid businessId is required'),
+    body()
+        .custom((value) => {
+            if (!customerNameFrom(value)) throw new Error('Name is required');
+            if (!customerEmailFrom(value)) throw new Error('Email is required');
+            if (!customerPhoneFrom(value)) throw new Error('Phone is required');
+            return true;
+        }),
+    body(['name', 'customerName', 'userName'])
+        .optional()
+        .isLength({ min: 1, max: 80 })
+        .withMessage('Name must be 80 characters or fewer')
+        .trim(),
+    body(['email', 'customerEmail'])
+        .optional()
+        .isEmail()
+        .withMessage('Please provide a valid email')
+        .normalizeEmail(),
+    body(['phone', 'phoneNumber', 'customerPhone'])
+        .optional()
+        .isLength({ max: 30 })
+        .withMessage('Phone must be 30 characters or fewer')
+        .trim(),
+];
+
+export const verifyCustomerEmailOtpValidator = [
+    body('businessId').isMongoId().withMessage('Valid businessId is required'),
+    body()
+        .custom((value) => {
+            if (!customerEmailFrom(value)) throw new Error('Email is required');
+            if (!otpFrom(value)) throw new Error('OTP is required');
+            return true;
+        }),
+    body(['email', 'customerEmail'])
+        .optional()
+        .isEmail()
+        .withMessage('Please provide a valid email')
+        .normalizeEmail(),
+    body(['otp', 'code'])
+        .optional()
+        .isLength({ min: 6, max: 6 })
+        .withMessage('OTP must be 6 digits')
+        .isNumeric()
+        .withMessage('OTP must be numeric'),
 ];
 
 export const forgotPasswordValidator = [
@@ -193,17 +246,17 @@ export const updateAgentValidator = [
 
 export const identifyCustomerValidator = [
     body('businessId').isMongoId().withMessage('Valid businessId is required'),
-    body('name')
+    body(['name', 'customerName', 'userName'])
         .optional()
         .isLength({ min: 1, max: 80 })
         .withMessage('Name must be 80 characters or fewer')
         .trim(),
-    body('email')
+    body(['email', 'customerEmail'])
         .optional()
         .isEmail()
         .withMessage('Please provide a valid email')
         .normalizeEmail(),
-    body('phone')
+    body(['phone', 'phoneNumber', 'customerPhone'])
         .optional()
         .isLength({ max: 30 })
         .withMessage('Phone must be 30 characters or fewer')

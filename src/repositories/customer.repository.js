@@ -45,22 +45,6 @@ class CustomerRepository extends CustomerRepositoryContract {
             .lean();
     }
 
-    async updateById(customerId, updates) {
-        return this.model
-            .findByIdAndUpdate(customerId, updates, {
-                returnDocument: "after",
-                runValidators: true,
-            })
-            .lean();
-    }
-
-    async markEmailVerified(customerId) {
-        return this.updateById(customerId, {
-            isEmailVerified: true,
-            emailVerifiedAt: new Date(),
-        });
-    }
-
     async count(filter = {}) {
         return this.model.countDocuments(filter);
     }

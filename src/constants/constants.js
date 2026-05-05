@@ -18,7 +18,6 @@ export const AUTH_PROVIDERS = {
 
 export const OTP_PURPOSES = {
     EMAIL_VERIFICATION: 'email_verification',
-    CUSTOMER_EMAIL_VERIFICATION: 'customer_email_verification',
     PASSWORD_RESET: 'password_reset',
 };
 

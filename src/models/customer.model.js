@@ -25,14 +25,6 @@ const customerSchema = new mongoose.Schema(
             required: true,
             index: true,
         },
-        isEmailVerified: {
-            type: Boolean,
-            default: false,
-        },
-        emailVerifiedAt: {
-            type: Date,
-            default: null,
-        },
     },
     { timestamps: true }
 );

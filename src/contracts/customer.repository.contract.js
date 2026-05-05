@@ -39,25 +39,6 @@ class CustomerRepositoryContract {
     }
 
     /**
-     * @param {string} customerId
-     * @param {Object} updates
-     * @returns {Promise<Object|null>}
-     */
-    async updateById(_customerId, _updates) {
-        void _customerId; void _updates;
-        throw new Error("Method not implemented: updateById");
-    }
-
-    /**
-     * @param {string} customerId
-     * @returns {Promise<Object|null>}
-     */
-    async markEmailVerified(_customerId) {
-        void _customerId;
-        throw new Error("Method not implemented: markEmailVerified");
-    }
-
-    /**
      * @param {Object} filter
      * @returns {Promise<number>}
      */

@@ -49,63 +49,6 @@ export const protect = async (req, res, next) => {
     }
 };
 
-export const protectVerifiedCustomer = (req, res, next) => {
-    try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader?.startsWith("Bearer ")
-            ? authHeader.split(" ")[1]
-            : req.body?.customerToken;
-
-        if (!token) {
-            return next(appError("Customer email verification is required", 401));
-        }
-
-        const decoded = verifyAccessToken(token);
-
-        if (!decoded.customerId || decoded.role !== "customer") {
-            return next(appError("Invalid customer token", 401));
-        }
-
-        if (!decoded.isEmailVerified) {
-            return next(appError("Please verify your email before continuing", 403));
-        }
-
-        const requestBusinessId = req.body?.businessId || req.query?.businessId;
-        if (requestBusinessId && String(decoded.businessId) !== String(requestBusinessId)) {
-            return next(appError("Customer token does not match this business", 403));
-        }
-
-        const requestCustomerEmail = req.body?.customerEmail;
-        if (
-            requestCustomerEmail &&
-            String(requestCustomerEmail).trim().toLowerCase() !== String(decoded.email).toLowerCase()
-        ) {
-            return next(appError("Customer email does not match verified token", 403));
-        }
-
-        if (decoded.email && req.body) {
-            req.body.customerEmail = decoded.email;
-        }
-
-        if (req.body?.customerToken) {
-            delete req.body.customerToken;
-        }
-
-        req.customer = decoded;
-        next();
-    } catch (error) {
-        if (error.name === "JsonWebTokenError") {
-            return next(appError("Invalid customer token", 401));
-        }
-
-        if (error.name === "TokenExpiredError") {
-            return next(appError("Customer token expired", 401));
-        }
-
-        next(error);
-    }
-};
-
 export const requireVerified = (req, res, next) => {
     if (!req.user?.isEmailVerified) {
         return next(appError("Please verify your email before continuing", 403));

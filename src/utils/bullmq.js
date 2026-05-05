@@ -45,6 +45,24 @@ const sendEmailDirectFallback = async ({ to, subject, html, text }) => {
     };
 };
 
+const sendEmailDirectFallbackInBackground = ({ to, subject, html, text, reason }) => {
+    sendEmailDirectFallback({ to, subject, html, text }).catch((error) => {
+        logger.error("Background direct email fallback failed", {
+            to,
+            subject,
+            reason,
+            error: error.message,
+        });
+    });
+
+    return {
+        queued: false,
+        fallback: "background-direct-email",
+        pending: true,
+        reason,
+    };
+};
+
 export const warmEmailQueue = () => {
     if (queueInitStarted || emailQueue) return;
     queueInitStarted = true;
@@ -69,18 +87,20 @@ export const getEmailQueue = async () => {
 };
 
 export const queueEmail = async ({ to, subject, html, text, metadata = {} }) => {
-    let queue = emailQueue;
-
-    if (!queue && !queueInitStarted) {
-        warmEmailQueue();
-    }
+    const queue = emailQueue || await getEmailQueue();
 
     if (!queue) {
-        logger.warn("Email queue unavailable; sending email with direct fallback", {
+        logger.warn("Email queue unavailable; sending email with background direct fallback", {
             to,
             subject,
         });
-        return sendEmailDirectFallback({ to, subject, html, text });
+        return sendEmailDirectFallbackInBackground({
+            to,
+            subject,
+            html,
+            text,
+            reason: "queue_unavailable",
+        });
     }
 
     try {
@@ -94,12 +114,18 @@ export const queueEmail = async ({ to, subject, html, text, metadata = {} }) => 
             jobId: job.id,
         };
     } catch (error) {
-        logger.error("Email queue add failed; using direct fallback", {
+        logger.error("Email queue add failed; using background direct fallback", {
             to,
             subject,
             error: error.message,
         });
-        return sendEmailDirectFallback({ to, subject, html, text });
+        return sendEmailDirectFallbackInBackground({
+            to,
+            subject,
+            html,
+            text,
+            reason: "queue_add_failed",
+        });
     }
 };
 

@@ -27,6 +27,13 @@ const summarizeOtpDelivery = (delivery) => {
     if (!delivery) return { status: "unknown" };
     if (delivery.error) return { status: "failed", error: delivery.error };
     if (delivery.queued) return { status: "queued", jobId: delivery.jobId };
+    if (delivery.pending) {
+        return {
+            status: "pending",
+            fallback: delivery.fallback,
+            reason: delivery.reason,
+        };
+    }
     if (delivery.email?.skipped) return { status: "skipped", reason: "smtp_not_configured" };
     if (delivery.email?.rejected?.length) {
         return { status: "rejected", rejected: delivery.email.rejected };

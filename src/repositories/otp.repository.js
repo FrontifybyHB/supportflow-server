@@ -19,9 +19,25 @@ class OtpRepository extends OtpRepositoryContract {
             .lean();
     }
 
+    async findLatestUnusedForCustomerWithHash(customerId, purpose) {
+        return this.model
+            .findOne({ customerId, purpose, used: false })
+            .select("+otpHash expiresAt")
+            .sort({ createdAt: -1 })
+            .lean();
+    }
+
     async markPreviousAsUsed(userId, purpose) {
         const result = await this.model.updateMany(
             { userId, purpose, used: false },
+            { $set: { used: true } }
+        );
+        return result.modifiedCount ?? 0;
+    }
+
+    async markPreviousForCustomerAsUsed(customerId, purpose) {
+        const result = await this.model.updateMany(
+            { customerId, purpose, used: false },
             { $set: { used: true } }
         );
         return result.modifiedCount ?? 0;

@@ -9,8 +9,10 @@ import {
     googleLoginValidator,
     loginValidator,
     registerValidator,
+    requestCustomerEmailOtpValidator,
     resendOtpValidator,
     resetPasswordValidator,
+    verifyCustomerEmailOtpValidator,
     verifyOtpValidator,
 } from '../validators/auth.validator.js';
 
@@ -25,6 +27,36 @@ router.post("/refresh", authController.refreshAccessToken);
 router.post("/refresh-token", authController.refreshAccessToken);
 router.post("/verify-otp", validate(verifyOtpValidator), authController.verifyOtp);
 router.post("/resend-otp", validate(resendOtpValidator), authController.resendOtp);
+router.post(
+    "/customer/email/request-otp",
+    validate(requestCustomerEmailOtpValidator),
+    authController.requestCustomerEmailOtp
+);
+router.post(
+    "/customer/email/send-otp",
+    validate(requestCustomerEmailOtpValidator),
+    authController.requestCustomerEmailOtp
+);
+router.post(
+    "/customer/request-otp",
+    validate(requestCustomerEmailOtpValidator),
+    authController.requestCustomerEmailOtp
+);
+router.post(
+    "/customer/email/verify-otp",
+    validate(verifyCustomerEmailOtpValidator),
+    authController.verifyCustomerEmailOtp
+);
+router.post(
+    "/customer/email/verify",
+    validate(verifyCustomerEmailOtpValidator),
+    authController.verifyCustomerEmailOtp
+);
+router.post(
+    "/customer/verify-otp",
+    validate(verifyCustomerEmailOtpValidator),
+    authController.verifyCustomerEmailOtp
+);
 router.post("/forgot-password", validate(forgotPasswordValidator), authController.forgotPassword);
 router.post("/reset-password", validate(resetPasswordValidator), authController.resetPassword);
 router.post("/logout", authController.logout);

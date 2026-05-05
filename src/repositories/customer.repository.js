@@ -18,19 +18,22 @@ class CustomerRepository extends CustomerRepositoryContract {
 
     /**
      * Atomic find-or-create for an emailed customer of a business.
-     * Defaults are only written on insert ($setOnInsert).
+     * Defaults are written on insert; provided profile fields refresh existing rows.
      */
     async upsertByBusinessAndEmail({ businessId, email, name, phone }) {
+        const set = {};
+        if (name) set.name = name;
+        if (phone) set.phone = phone;
+        const setOnInsert = { businessId, email };
+        if (!name) setOnInsert.name = "Guest";
+        if (!phone) setOnInsert.phone = null;
+
         return this.model
             .findOneAndUpdate(
                 { businessId, email },
                 {
-                    $setOnInsert: {
-                        businessId,
-                        email,
-                        name: name || "Guest",
-                        phone: phone || null,
-                    },
+                    ...(Object.keys(set).length && { $set: set }),
+                    $setOnInsert: setOnInsert,
                 },
                 {
                     returnDocument: "after",
@@ -40,6 +43,22 @@ class CustomerRepository extends CustomerRepositoryContract {
                 }
             )
             .lean();
+    }
+
+    async updateById(customerId, updates) {
+        return this.model
+            .findByIdAndUpdate(customerId, updates, {
+                returnDocument: "after",
+                runValidators: true,
+            })
+            .lean();
+    }
+
+    async markEmailVerified(customerId) {
+        return this.updateById(customerId, {
+            isEmailVerified: true,
+            emailVerifiedAt: new Date(),
+        });
     }
 
     async count(filter = {}) {

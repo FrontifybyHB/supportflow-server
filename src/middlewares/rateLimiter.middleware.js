@@ -3,7 +3,7 @@ import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 export const generalRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // max 100 requests per IP
+    max: 150, // max 150 requests per IP
     standardHeaders: true,
     legacyHeaders: false,
 
@@ -35,7 +35,7 @@ export const chatRateLimiter = rateLimit({
 
 export const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 10, // only 10 login attempts
+    max: 15, // only 15 login attempts
     standardHeaders: true,
     legacyHeaders: false,
 

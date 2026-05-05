@@ -1,16 +1,12 @@
 import User from "../models/user.model.js";
 import UserRepositoryContract from "../contracts/user.repository.contract.js";
-import cacheService from "../services/cache.service.js";
 
 const SAFE_PROJECTION = "-passwordHash -__v";
-const USER_CACHE_TTL = 60;
-const userCacheKey = (id) => `user:byId:${id}`;
 
 class UserRepository extends UserRepositoryContract {
-    constructor(model = User, cache = cacheService) {
+    constructor(model = User) {
         super();
         this.model = model;
-        this.cache = cache;
     }
 
     async create(data) {
@@ -35,20 +31,14 @@ class UserRepository extends UserRepositoryContract {
 
     async findById(userId) {
         if (!userId) return null;
-        return this.cache.wrap(
-            userCacheKey(userId),
-            USER_CACHE_TTL,
-            () => this.model.findById(userId).select(SAFE_PROJECTION).lean()
-        );
+        return this.model.findById(userId).select(SAFE_PROJECTION).lean();
     }
 
     async updateById(userId, updates) {
-        const updated = await this.model
+        return this.model
             .findByIdAndUpdate(userId, updates, { returnDocument: "after", runValidators: true })
             .select(SAFE_PROJECTION)
             .lean();
-        if (updated) await this.cache.del(userCacheKey(userId));
-        return updated;
     }
 
     async listByBusinessAndRole(businessId, role) {
@@ -88,7 +78,7 @@ class UserRepository extends UserRepositoryContract {
     }
 
     async updateScopedByRole(userId, businessId, role, updates) {
-        const updated = await this.model
+        return this.model
             .findOneAndUpdate(
                 { _id: userId, businessId, role },
                 updates,
@@ -96,24 +86,14 @@ class UserRepository extends UserRepositoryContract {
             )
             .select(SAFE_PROJECTION)
             .lean();
-        if (updated) await this.cache.del(userCacheKey(userId));
-        return updated;
     }
 
     async deactivateByBusinessAndRoles(businessId, roles) {
-        const affected = await this.model
-            .find({ businessId, role: { $in: roles } })
-            .select("_id")
-            .lean();
-
         const result = await this.model.updateMany(
             { businessId, role: { $in: roles } },
             { isActive: false }
         );
 
-        if (affected.length > 0) {
-            await this.cache.delMany(affected.map((u) => userCacheKey(u._id)));
-        }
         return { modifiedCount: result.modifiedCount ?? 0 };
     }
 

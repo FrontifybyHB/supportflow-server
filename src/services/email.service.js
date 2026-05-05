@@ -1,4 +1,7 @@
 import nodemailer from "nodemailer";
+import dns from "dns";
+import net from "net";
+import tls from "tls";
 
 import config from "../config/config.js";
 import logger from "../loggers/winston.logger.js";
@@ -11,24 +14,113 @@ const isEmailConfigured = () => {
     return Boolean(config.EMAIL_HOST && config.EMAIL_USER && config.EMAIL_PASSWORD);
 };
 
+const parseBoolean = (value, defaultValue = false) => {
+    if (value === undefined || value === null || value === "") return defaultValue;
+    return ["1", "true", "yes", "on"].includes(String(value).trim().toLowerCase());
+};
+
+const emailForceIpv4 = () => parseBoolean(config.EMAIL_FORCE_IPV4, true);
+const emailPort = () => Number(config.EMAIL_PORT || 587);
+const emailSecure = () => emailPort() === 465;
+
+const resolveIpv4Host = async (host) => {
+    const resolved = await dns.promises.resolve4(host);
+    if (resolved?.length) return resolved[0];
+
+    const lookup = await dns.promises.lookup(host, { family: 4 });
+    return lookup?.address;
+};
+
+const createIpv4Socket = async (options) => {
+    const port = Number(options.port || emailPort());
+    const originalHost = options.host;
+    const ipv4Host = await resolveIpv4Host(originalHost);
+
+    if (!ipv4Host) {
+        throw new Error(`No IPv4 SMTP address found for ${originalHost}`);
+    }
+
+    const socketOptions = {
+        host: ipv4Host,
+        port,
+        servername: options.servername || originalHost,
+    };
+
+    const connection = await new Promise((resolve, reject) => {
+        const socket = options.secure
+            ? tls.connect(socketOptions)
+            : net.connect(socketOptions);
+
+        const timeout = setTimeout(() => {
+            cleanup();
+            socket.destroy();
+            reject(new Error(`IPv4 SMTP connection timed out after ${options.connectionTimeout || 10000}ms`));
+        }, Number(options.connectionTimeout || 10000));
+        timeout.unref();
+
+        const cleanup = () => {
+            clearTimeout(timeout);
+            socket.removeListener("connect", onConnect);
+            socket.removeListener("secureConnect", onSecureConnect);
+            socket.removeListener("error", onError);
+        };
+
+        const onConnect = () => {
+            if (options.secure) return;
+            cleanup();
+            resolve(socket);
+        };
+        const onSecureConnect = () => {
+            cleanup();
+            resolve(socket);
+        };
+        const onError = (error) => {
+            cleanup();
+            socket.destroy();
+            reject(error);
+        };
+
+        socket.once("connect", onConnect);
+        socket.once("secureConnect", onSecureConnect);
+        socket.once("error", onError);
+    });
+
+    return {
+        connection,
+        secured: Boolean(options.secure),
+        host: ipv4Host,
+        servername: options.servername || originalHost,
+    };
+};
+
+const buildTransportOptions = () => ({
+    host: config.EMAIL_HOST,
+    port: emailPort(),
+    secure: emailSecure(),
+    connectionTimeout: Number(config.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
+    greetingTimeout: Number(config.EMAIL_GREETING_TIMEOUT_MS || 10000),
+    socketTimeout: Number(config.EMAIL_SOCKET_TIMEOUT_MS || 15000),
+    dnsTimeout: Number(config.EMAIL_DNS_TIMEOUT_MS || 5000),
+    ...(emailForceIpv4() && {
+        getSocket: (options, callback) => {
+            createIpv4Socket(options)
+                .then((socketOptions) => callback(null, socketOptions))
+                .catch((error) => callback(error));
+        },
+    }),
+    auth: {
+        user: config.EMAIL_USER,
+        pass: config.EMAIL_PASSWORD,
+    },
+});
+
 let transporter;
 
 const getTransporter = () => {
     if (!isEmailConfigured()) return null;
 
     if (!transporter) {
-        transporter = nodemailer.createTransport({
-            host: config.EMAIL_HOST,
-            port: Number(config.EMAIL_PORT || 587),
-            secure: Number(config.EMAIL_PORT) === 465,
-            connectionTimeout: Number(config.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
-            greetingTimeout: Number(config.EMAIL_GREETING_TIMEOUT_MS || 10000),
-            socketTimeout: Number(config.EMAIL_SOCKET_TIMEOUT_MS || 15000),
-            auth: {
-                user: config.EMAIL_USER,
-                pass: config.EMAIL_PASSWORD,
-            },
-        });
+        transporter = nodemailer.createTransport(buildTransportOptions());
     }
 
     return transporter;
@@ -49,6 +141,11 @@ export const verifyEmailService = async () => {
         logger.error("Email service verification failed", { error: error.message });
         return false;
     }
+};
+
+export const createEmailTransporter = () => {
+    if (!isEmailConfigured()) return null;
+    return nodemailer.createTransport(buildTransportOptions());
 };
 
 export const sendEmail = async ({ to, subject, html, text, from = defaultFrom() }) => {

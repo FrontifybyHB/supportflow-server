@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
-import nodemailer from "nodemailer";
 
 import config from "../config/config.js";
 import logger from "../loggers/winston.logger.js";
 import cacheService from "../services/cache.service.js";
+import { createEmailTransporter } from "../services/email.service.js";
 import { getEmailQueue, getQueueConnection, isQueueConfigured } from "../queues/email.queue.js";
 
 const STATUS = Object.freeze({ OK: "OK", WARN: "WARN", FAIL: "FAIL", SKIP: "SKIP" });
@@ -117,15 +117,7 @@ const checkSmtp = async () => {
         };
     }
 
-    const transporter = nodemailer.createTransport({
-        host: config.EMAIL_HOST,
-        port: Number(config.EMAIL_PORT || 587),
-        secure: Number(config.EMAIL_PORT) === 465,
-        connectionTimeout: Number(config.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
-        greetingTimeout: Number(config.EMAIL_GREETING_TIMEOUT_MS || 10000),
-        socketTimeout: Number(config.EMAIL_SOCKET_TIMEOUT_MS || 15000),
-        auth: { user: config.EMAIL_USER, pass: config.EMAIL_PASSWORD },
-    });
+    const transporter = createEmailTransporter();
 
     try {
         await withTimeout(transporter.verify(), PING_TIMEOUT_MS * 2, "SMTP verify");

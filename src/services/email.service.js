@@ -7,11 +7,23 @@ import config from "../config/config.js";
 import logger from "../loggers/winston.logger.js";
 
 const defaultFrom = () => {
-    return config.EMAIL_FROM || `"SupportFlow AI" <${config.EMAIL_USER}>`;
+    return config.RESEND_FROM || config.EMAIL_FROM || `"SupportFlow AI" <${config.EMAIL_USER}>`;
 };
 
-const isEmailConfigured = () => {
+const isSmtpConfigured = () => {
     return Boolean(config.EMAIL_HOST && config.EMAIL_USER && config.EMAIL_PASSWORD);
+};
+
+const isResendConfigured = () => Boolean(config.RESEND_API_KEY);
+
+const activeEmailProvider = () => {
+    const requested = String(config.EMAIL_PROVIDER || "auto").trim().toLowerCase();
+
+    if (requested === "resend") return isResendConfigured() ? "resend" : null;
+    if (requested === "smtp") return isSmtpConfigured() ? "smtp" : null;
+    if (isResendConfigured()) return "resend";
+    if (isSmtpConfigured()) return "smtp";
+    return null;
 };
 
 const parseBoolean = (value, defaultValue = false) => {
@@ -117,7 +129,7 @@ const buildTransportOptions = () => ({
 let transporter;
 
 const getTransporter = () => {
-    if (!isEmailConfigured()) return null;
+    if (!isSmtpConfigured()) return null;
 
     if (!transporter) {
         transporter = nodemailer.createTransport(buildTransportOptions());
@@ -127,15 +139,21 @@ const getTransporter = () => {
 };
 
 export const verifyEmailService = async () => {
-    const transport = getTransporter();
-    if (!transport) {
-        logger.warn("Email service disabled: SMTP env vars are not configured");
+    const provider = activeEmailProvider();
+    if (!provider) {
+        logger.warn("Email service disabled: no email provider is configured");
         return false;
     }
 
+    if (provider === "resend") {
+        logger.info("Email service configured", { provider: "resend" });
+        return true;
+    }
+
+    const transport = getTransporter();
     try {
         await transport.verify();
-        logger.info("Email service verified");
+        logger.info("Email service verified", { provider: "smtp" });
         return true;
     } catch (error) {
         logger.error("Email service verification failed", { error: error.message });
@@ -144,15 +162,64 @@ export const verifyEmailService = async () => {
 };
 
 export const createEmailTransporter = () => {
-    if (!isEmailConfigured()) return null;
+    if (!isSmtpConfigured()) return null;
     return nodemailer.createTransport(buildTransportOptions());
 };
 
-export const sendEmail = async ({ to, subject, html, text, from = defaultFrom() }) => {
-    if (!to || !subject || !html) {
-        throw new Error("sendEmail requires to, subject, and html");
-    }
+const sendWithResend = async ({ to, subject, html, text, from }) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(
+        () => controller.abort(),
+        Number(config.RESEND_TIMEOUT_MS || 10000)
+    );
+    timeout.unref();
 
+    try {
+        const response = await fetch("https://api.resend.com/emails", {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${config.RESEND_API_KEY}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                from,
+                to,
+                subject,
+                html,
+                text,
+            }),
+            signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            const message = payload?.message || payload?.error || response.statusText;
+            throw new Error(`Resend API failed (${response.status}): ${message}`);
+        }
+
+        logger.info("Email sent", {
+            to,
+            subject,
+            provider: "resend",
+            messageId: payload.id,
+        });
+
+        return {
+            provider: "resend",
+            messageId: payload.id,
+            accepted: [to],
+        };
+    } catch (error) {
+        if (error.name === "AbortError") {
+            throw new Error(`Resend API timed out after ${config.RESEND_TIMEOUT_MS || 10000}ms`);
+        }
+        throw error;
+    } finally {
+        clearTimeout(timeout);
+    }
+};
+
+const sendWithSmtp = async ({ to, subject, html, text, from }) => {
     const transport = getTransporter();
     if (!transport) {
         logger.info("Email skipped because SMTP is not configured", { to, subject });
@@ -170,11 +237,34 @@ export const sendEmail = async ({ to, subject, html, text, from = defaultFrom() 
     logger.info("Email sent", {
         to,
         subject,
+        provider: "smtp",
         messageId: result.messageId,
     });
 
     return result;
 };
+
+export const sendEmail = async ({ to, subject, html, text, from = defaultFrom() }) => {
+    if (!to || !subject || !html) {
+        throw new Error("sendEmail requires to, subject, and html");
+    }
+
+    const provider = activeEmailProvider();
+    if (!provider) {
+        logger.info("Email skipped because no email provider is configured", { to, subject });
+        return { skipped: true, message: "Email service is not configured" };
+    }
+
+    return provider === "resend"
+        ? sendWithResend({ to, subject, html, text, from })
+        : sendWithSmtp({ to, subject, html, text, from });
+};
+
+export const getEmailProviderStatus = () => ({
+    provider: activeEmailProvider(),
+    resendConfigured: isResendConfigured(),
+    smtpConfigured: isSmtpConfigured(),
+});
 
 const otpSubject = (purpose) => {
     return purpose === "password_reset"

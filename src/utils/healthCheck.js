@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import config from "../config/config.js";
 import logger from "../loggers/winston.logger.js";
 import cacheService from "../services/cache.service.js";
-import { createEmailTransporter } from "../services/email.service.js";
+import { createEmailTransporter, getEmailProviderStatus } from "../services/email.service.js";
 import { getEmailQueue, getQueueConnection, isQueueConfigured } from "../queues/email.queue.js";
 
 const STATUS = Object.freeze({ OK: "OK", WARN: "WARN", FAIL: "FAIL", SKIP: "SKIP" });
@@ -109,11 +109,21 @@ const checkBullMqRedis = async () => {
 };
 
 const checkSmtp = async () => {
-    if (!required(config.EMAIL_HOST) || !required(config.EMAIL_USER) || !required(config.EMAIL_PASSWORD)) {
+    const emailStatus = getEmailProviderStatus();
+
+    if (emailStatus.provider === "resend") {
         return {
-            name: "Email SMTP",
+            name: "Email delivery",
+            status: STATUS.OK,
+            detail: "Resend API configured",
+        };
+    }
+
+    if (emailStatus.provider !== "smtp") {
+        return {
+            name: "Email delivery",
             status: STATUS.WARN,
-            detail: "not configured (OTPs will be logged instead of emailed)",
+            detail: "not configured (set RESEND_API_KEY or SMTP env vars)",
         };
     }
 
@@ -121,9 +131,9 @@ const checkSmtp = async () => {
 
     try {
         await withTimeout(transporter.verify(), PING_TIMEOUT_MS * 2, "SMTP verify");
-        return { name: "Email SMTP", status: STATUS.OK, detail: `verified (${config.EMAIL_HOST})` };
+        return { name: "Email delivery", status: STATUS.OK, detail: `SMTP verified (${config.EMAIL_HOST})` };
     } catch (error) {
-        return { name: "Email SMTP", status: STATUS.FAIL, detail: `verify failed: ${error.message}` };
+        return { name: "Email delivery", status: STATUS.FAIL, detail: `SMTP verify failed: ${error.message}` };
     }
 };
 

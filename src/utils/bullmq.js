@@ -1,5 +1,6 @@
 import { Queue, Worker } from "bullmq";
 
+import config from "../config/config.js";
 import logger from "../loggers/winston.logger.js";
 import { sendEmail } from "../services/email.service.js";
 import { getQueueRedisConnection } from "./redis.js";
@@ -27,6 +28,15 @@ const summarizeEmailResult = (result = {}) => ({
     rejected: result.rejected,
 });
 
+const withTimeout = (promise, ms, label) => {
+    return Promise.race([
+        promise,
+        new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms).unref()
+        ),
+    ]);
+};
+
 const sendEmailDirectFallback = async ({ to, subject, html, text }) => {
     const result = await sendEmail({ to, subject, html, text });
     const email = summarizeEmailResult(result);
@@ -42,6 +52,24 @@ const sendEmailDirectFallback = async ({ to, subject, html, text }) => {
         queued: false,
         fallback: "direct-email",
         email,
+    };
+};
+
+const sendEmailDirectFallbackInBackground = ({ to, subject, html, text, reason }) => {
+    sendEmailDirectFallback({ to, subject, html, text }).catch((error) => {
+        logger.error("Background direct email fallback failed", {
+            to,
+            subject,
+            reason,
+            error: error.message,
+        });
+    });
+
+    return {
+        queued: false,
+        fallback: "background-direct-email",
+        pending: true,
+        reason,
     };
 };
 
@@ -71,35 +99,64 @@ export const getEmailQueue = async () => {
 export const queueEmail = async ({ to, subject, html, text, metadata = {} }) => {
     let queue = emailQueue;
 
-    if (!queue && !queueInitStarted) {
-        warmEmailQueue();
+    if (!queue) {
+        try {
+            queue = await withTimeout(
+                getEmailQueue(),
+                Number(config.EMAIL_QUEUE_INIT_TIMEOUT_MS || 1500),
+                "Email queue init"
+            );
+        } catch (error) {
+            logger.warn("Email queue init timed out; using background direct fallback", {
+                to,
+                subject,
+                error: error.message,
+            });
+            queue = null;
+        }
     }
 
     if (!queue) {
-        logger.warn("Email queue unavailable; sending email with direct fallback", {
+        logger.warn("Email queue unavailable; sending email with background direct fallback", {
             to,
             subject,
         });
-        return sendEmailDirectFallback({ to, subject, html, text });
+        return sendEmailDirectFallbackInBackground({
+            to,
+            subject,
+            html,
+            text,
+            reason: "queue_unavailable",
+        });
     }
 
     try {
-        const job = await queue.add(
-            "send-email",
-            { to, subject, html, text, metadata },
-            defaultJobOptions
+        const job = await withTimeout(
+            queue.add(
+                "send-email",
+                { to, subject, html, text, metadata },
+                defaultJobOptions
+            ),
+            Number(config.EMAIL_QUEUE_ADD_TIMEOUT_MS || 3000),
+            "Email queue add"
         );
         return {
             queued: true,
             jobId: job.id,
         };
     } catch (error) {
-        logger.error("Email queue add failed; using direct fallback", {
+        logger.error("Email queue add failed; using background direct fallback", {
             to,
             subject,
             error: error.message,
         });
-        return sendEmailDirectFallback({ to, subject, html, text });
+        return sendEmailDirectFallbackInBackground({
+            to,
+            subject,
+            html,
+            text,
+            reason: "queue_add_failed",
+        });
     }
 };
 

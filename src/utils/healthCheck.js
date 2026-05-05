@@ -4,7 +4,7 @@ import nodemailer from "nodemailer";
 import config from "../config/config.js";
 import logger from "../loggers/winston.logger.js";
 import cacheService from "../services/cache.service.js";
-import { getQueueConnection, isQueueConfigured } from "../queues/email.queue.js";
+import { getEmailQueue, getQueueConnection, isQueueConfigured } from "../queues/email.queue.js";
 
 const STATUS = Object.freeze({ OK: "OK", WARN: "WARN", FAIL: "FAIL", SKIP: "SKIP" });
 const CRITICAL_CHECKS = new Set(["Env vars", "MongoDB"]);
@@ -85,19 +85,20 @@ const checkBullMqRedis = async () => {
         return {
             name: "BullMQ Redis (queues)",
             status: STATUS.WARN,
-            detail: "not configured (set REDIS_URL to enable async email queue)",
+            detail: "not configured (set UPSTASH_REDIS_URL or REDIS_URL to enable async email queue)",
         };
     }
-    const conn = getQueueConnection();
-    if (!conn) {
-        return {
-            name: "BullMQ Redis (queues)",
-            status: STATUS.WARN,
-            detail: "configured but not connected yet",
-        };
-    }
-
     try {
+        await withTimeout(getEmailQueue(), PING_TIMEOUT_MS * 2, "BullMQ queue init");
+        const conn = getQueueConnection();
+        if (!conn) {
+            return {
+                name: "BullMQ Redis (queues)",
+                status: STATUS.WARN,
+                detail: "configured but not connected yet",
+            };
+        }
+
         const reply = await withTimeout(conn.ping(), PING_TIMEOUT_MS, "BullMQ Redis ping");
         return reply === "PONG"
             ? { name: "BullMQ Redis (queues)", status: STATUS.OK, detail: "reachable" }
@@ -120,6 +121,9 @@ const checkSmtp = async () => {
         host: config.EMAIL_HOST,
         port: Number(config.EMAIL_PORT || 587),
         secure: Number(config.EMAIL_PORT) === 465,
+        connectionTimeout: Number(config.EMAIL_CONNECTION_TIMEOUT_MS || 10000),
+        greetingTimeout: Number(config.EMAIL_GREETING_TIMEOUT_MS || 10000),
+        socketTimeout: Number(config.EMAIL_SOCKET_TIMEOUT_MS || 15000),
         auth: { user: config.EMAIL_USER, pass: config.EMAIL_PASSWORD },
     });
 
